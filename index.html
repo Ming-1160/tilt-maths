@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="小學乘除法滾球遊戲：傾斜木板把小球滾進正確答案的洞，答完用「長方形平均分」動畫解說。">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>乘除滾滾球</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap">
+<style>
+/* Layout: one phone-width column (score strip, big question, wooden tilt board, settings); the worked explanation slides up as a sheet */
+:root{
+  --paper:#edf2f7; --grid:rgba(47,92,145,.085); --ink:#1c2632; --ink-soft:#56667a; --card:#ffffff; --line:#cfd9e4;
+  --accent:#2c6cb0; --on-accent:#ffffff; --ring:#2c6cb0;
+  --good:#1f8a55; --bad:#cf4338; --good-soft:#e2f3e9; --bad-soft:#fbe6e3;
+  --wood-1:#e3bd88; --wood-2:#c99359; --wood-3:#9a6532; --grain:rgba(120,70,25,.07); --burn:rgba(110,62,20,.10); --burn-strong:rgba(110,62,20,.35);
+  --pit-core:#060403; --pit-edge:#2c1b0d; --pit-lip:rgba(255,238,200,.45);
+  --brass-1:#f8e3a1; --brass-2:#e2b75a; --brass-ink:#3f2c0c;
+  --steel-1:#ffffff; --steel-2:#c3cad2; --steel-3:#68727d; --steel-4:#2c3238;
+  --cube-plain:#a4b4c6; --bar:#f6f9fc; --scrim:rgba(14,24,36,.38); --shadow:0 12px 30px rgba(22,44,74,.16);
+  --c1:#e5484d; --c2:#f0a23b; --c3:#3a87cc; --c4:#38a160; --c5:#8b68d6; --c6:#e06d36; --c7:#169e9e; --c8:#c04f97; --c9:#7d8f2c;
+  --f-zh:"LXGW WenKai TC","Kaiti TC","BiauKai","DFKai-SB","STKaiti","KaiTi",serif;
+  --f-num:"Lexend","Avenir Next","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#111922; --grid:rgba(140,180,230,.06); --ink:#e6edf5; --ink-soft:#a3b3c5; --card:#1a2531; --line:#2d3b4b;
+    --accent:#79aef0; --on-accent:#0c1a2a; --ring:#9cc6ff;
+    --good:#4cc488; --bad:#f2786d; --good-soft:#163627; --bad-soft:#40211e;
+    --wood-1:#cfa36c; --wood-2:#b07c45; --wood-3:#7f5124; --grain:rgba(90,50,15,.10); --burn:rgba(90,50,15,.14); --burn-strong:rgba(70,40,10,.45);
+    --cube-plain:#6c7f94; --bar:#15202b; --scrim:rgba(0,0,0,.55); --shadow:0 12px 30px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111922; --grid:rgba(140,180,230,.06); --ink:#e6edf5; --ink-soft:#a3b3c5; --card:#1a2531; --line:#2d3b4b;
+  --accent:#79aef0; --on-accent:#0c1a2a; --ring:#9cc6ff;
+  --good:#4cc488; --bad:#f2786d; --good-soft:#163627; --bad-soft:#40211e;
+  --wood-1:#cfa36c; --wood-2:#b07c45; --wood-3:#7f5124; --grain:rgba(90,50,15,.10); --burn:rgba(90,50,15,.14); --burn-strong:rgba(70,40,10,.45);
+  --cube-plain:#6c7f94; --bar:#15202b; --scrim:rgba(0,0,0,.55); --shadow:0 12px 30px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+
+html,body{min-height:100%}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink); font-family:var(--f-zh); font-size:16px; line-height:1.5;
+  -webkit-tap-highlight-color:transparent;
+}
+.app{
+  max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:14px;
+  padding-block:14px 36px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* header */
+.top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.top h1{margin:0; font-size:1.45rem; font-weight:700; letter-spacing:.04em}
+.status{display:flex; gap:8px; font-family:var(--f-num); font-variant-numeric:tabular-nums; font-size:.95rem}
+.pill{background:var(--card); border:1px solid var(--line); border-radius:999px; padding:3px 11px; white-space:nowrap}
+#score{color:var(--accent); font-weight:600}
+
+/* question */
+.question{text-align:center; display:grid; gap:2px}
+.expr{font-family:var(--f-num); font-weight:800; font-size:clamp(2.5rem, 12vw, 3.7rem); line-height:1.08; letter-spacing:.01em; font-variant-numeric:tabular-nums}
+.expr .q{color:var(--accent)}
+.meaning{margin:0; color:var(--ink-soft); font-size:1.08rem; text-wrap:balance}
+
+/* board */
+.board-wrap{position:relative; width:100%; max-width:440px; margin:0 auto; aspect-ratio:1 / 1; perspective:900px; touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab}
+.board-wrap:active{cursor:grabbing}
+.board{
+  position:absolute; inset:0; border-radius:26px;
+  background:linear-gradient(145deg, var(--wood-2), var(--wood-3));
+  box-shadow:var(--shadow), inset 0 2px 0 rgba(255,255,255,.28), inset 0 -3px 0 rgba(0,0,0,.18);
+  transform-style:preserve-3d; transition:transform .08s linear;
+}
+.surface{
+  position:absolute; inset:4.5%; border-radius:17px; overflow:hidden;
+  background-color:var(--wood-1);
+  background-image:
+    radial-gradient(circle at 30% 18%, rgba(255,255,255,.28), transparent 55%),
+    repeating-linear-gradient(97deg, var(--grain) 0 2px, transparent 2px 11px),
+    linear-gradient(var(--burn) 1px, transparent 1px),
+    linear-gradient(90deg, var(--burn) 1px, transparent 1px);
+  background-size:auto, auto, 10% 10%, 10% 10%;
+  box-shadow:inset 0 3px 12px rgba(60,30,5,.38);
+}
+.home{position:absolute; left:50%; top:50%; width:15%; aspect-ratio:1; border:2px dashed var(--burn-strong); border-radius:50%; transform:translate(-50%,-50%)}
+.hole{position:absolute; width:22%; aspect-ratio:1; transform:translate(-50%,-50%)}
+.pit{
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 50% 42%, var(--pit-core) 0 52%, var(--pit-edge) 72%);
+  box-shadow:inset 0 6px 12px rgba(0,0,0,.7), 0 0 0 3px var(--pit-lip);
+}
+.ring{position:absolute; left:-12%; top:-12%; width:124%; height:124%; transform:rotate(-90deg); pointer-events:none; overflow:visible}
+.ring circle{fill:none; stroke:var(--ring); stroke-width:7; stroke-linecap:round; stroke-dasharray:289.03; stroke-dashoffset:289.03}
+.plate{
+  position:absolute; top:50%; min-width:70%; padding:1px 8px; transform:translate(-50%,-50%);
+  background:linear-gradient(180deg, var(--brass-1), var(--brass-2)); color:var(--brass-ink);
+  font-family:var(--f-num); font-weight:800; font-size:clamp(1.15rem, 5.6vw, 1.65rem); line-height:1.25; text-align:center;
+  border-radius:9px; box-shadow:0 2px 0 rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.65);
+  font-variant-numeric:tabular-nums; z-index:2; transition:background .2s, color .2s, box-shadow .2s;
+}
+.hole[data-sx="-1"] .plate{left:131.8%}
+.hole[data-sx="1"] .plate{left:-31.8%}
+.hole.is-good .plate{background:var(--good); color:var(--on-accent)}
+.hole.is-bad .plate{background:var(--bad); color:var(--on-accent)}
+.hole.is-answer .plate{box-shadow:0 0 0 3px var(--good), 0 2px 0 rgba(0,0,0,.28)}
+.ball{
+  position:absolute; left:45%; top:45%; width:10%; aspect-ratio:1; border-radius:50%; z-index:3;
+  background:radial-gradient(circle at 34% 30%, var(--steel-1) 0 9%, var(--steel-2) 32%, var(--steel-3) 78%, var(--steel-4) 100%);
+  box-shadow:2px 5px 7px rgba(0,0,0,.38); will-change:transform;
+}
+.ball.fall{transition:transform .42s cubic-bezier(.3,.7,.4,1), opacity .42s; opacity:.3}
+
+.hint{margin:0; text-align:center; color:var(--ink-soft); font-size:.98rem; text-wrap:balance}
+
+/* controls */
+.controls{display:flex; flex-direction:column; align-items:center; gap:10px}
+.seg{display:inline-flex; flex-wrap:wrap; justify-content:center; background:var(--card); border:1px solid var(--line); border-radius:13px; padding:3px; gap:3px}
+.seg button{font:inherit; font-size:1rem; border:0; background:transparent; color:var(--ink-soft); padding:6px 14px; border-radius:10px; cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent); font-weight:700}
+.row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center}
+.row.end{justify-content:flex-end}
+.btn{font:inherit; font-size:1.02rem; border-radius:12px; padding:8px 16px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--on-accent); font-weight:700}
+button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
+
+.notes{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 14px}
+.notes summary{cursor:pointer; font-weight:700}
+.notes ul{margin:8px 0 2px; padding-left:1.2em; display:grid; gap:5px; color:var(--ink-soft)}
+
+/* explanation and summary sheets */
+.overlay{
+  position:fixed; inset:0; z-index:30; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;
+  padding-top:calc(12px + env(safe-area-inset-top, 0px));
+  padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left:max(12px, env(safe-area-inset-left, 0px));
+  padding-right:max(12px, env(safe-area-inset-right, 0px));
+}
+.scrim{position:absolute; inset:0; background:var(--scrim); opacity:0; transition:opacity .3s}
+.overlay.open .scrim{opacity:1}
+.sheet-card{
+  position:relative; width:100%; max-width:560px; max-height:100%; overflow:auto;
+  background:var(--card); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow);
+  padding:16px 16px 14px; display:grid; gap:8px;
+  transform:translateY(110%); transition:transform .38s cubic-bezier(.2,.8,.2,1);
+}
+.overlay.open .sheet-card{transform:none}
+.verdict{font-size:1.7rem; font-weight:700; line-height:1.2}
+.verdict.good{color:var(--good)}
+.verdict.bad{color:var(--bad)}
+.why{margin:0; font-size:1.06rem; line-height:1.6}
+.viz-box{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:6px}
+#viz{display:block; width:100%; height:auto}
+#viz .bar{fill:var(--bar); stroke:var(--line); stroke-width:2}
+#viz .cube{stroke:rgba(0,0,0,.2); stroke-width:1; transition:transform .55s cubic-bezier(.2,.8,.2,1), fill .35s, opacity .3s}
+#viz .divider{stroke:var(--ink); stroke-width:2.6; stroke-linecap:round; transition:stroke-dashoffset .5s ease}
+#viz .plab{opacity:0; transition:opacity .3s}
+#viz .plab.on{opacity:1}
+#viz .brace{fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+#viz .pnum{font-family:var(--f-num); font-weight:800; font-size:22px; fill:var(--ink)}
+.step{margin:0; min-height:1.6em; text-align:center; font-size:1.12rem}
+.eq{font-family:var(--f-num); font-weight:800; font-size:2.3rem; text-align:center; line-height:1.15; min-height:1.15em; opacity:0; transform:translateY(6px); transition:opacity .35s, transform .35s}
+.eq.on{opacity:1; transform:none}
+.eq b{color:var(--good); background:var(--good-soft); border-radius:10px; padding:0 .25em}
+.check{margin:0; min-height:1.5em; text-align:center; color:var(--ink-soft); opacity:0; transition:opacity .35s .15s}
+.check.on{opacity:1}
+.sheet-card h2{margin:0; font-size:1.5rem}
+.sum-score{margin:0; font-family:var(--f-num); font-weight:800; font-size:1.9rem; font-variant-numeric:tabular-nums}
+.sum-list{margin:0; padding-left:1.2em; display:grid; gap:4px}
+
+.toast{
+  position:fixed; z-index:40; left:50%; top:calc(10px + env(safe-area-inset-top, 0px)); transform:translateX(-50%);
+  width:max-content; max-width:min(92vw, 520px); background:var(--ink); color:var(--paper);
+  padding:10px 14px; border-radius:12px; box-shadow:var(--shadow); font-size:.98rem;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{transition-duration:.01ms !important; animation-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>乘除滾滾球</h1>
+    <div class="status">
+      <span class="pill" id="qCount">第 1／10 題</span>
+      <span class="pill" id="score">★ 0</span>
+    </div>
+  </header>
+
+  <section class="question" aria-live="polite">
+    <div class="expr" id="expr">12 ÷ 4 = <span class="q">?</span></div>
+    <p class="meaning" id="meaning">把 12 個平均分成 4 份，每份有多少個？</p>
+  </section>
+
+  <div class="board-wrap" id="boardWrap" role="group" aria-label="傾斜木板：把小球滾進正確答案的洞">
+    <div class="board" id="board">
+      <div class="surface" id="surface">
+        <div class="home" aria-hidden="true"></div>
+        <div class="hole" data-sx="-1" data-sy="-1" style="left:12%;top:12%"><div class="pit"></div><svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/></svg><span class="plate">8</span></div>
+        <div class="hole" data-sx="1" data-sy="-1" style="left:88%;top:12%"><div class="pit"></div><svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/></svg><span class="plate">3</span></div>
+        <div class="hole" data-sx="-1" data-sy="1" style="left:12%;top:88%"><div class="pit"></div><svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/></svg><span class="plate">16</span></div>
+        <div class="hole" data-sx="1" data-sy="1" style="left:88%;top:88%"><div class="pit"></div><svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/></svg><span class="plate">48</span></div>
+        <div class="ball" id="ball" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">按住木板的一邊，木板就向那邊傾斜，小球會滾過去。小球停在答案的洞上一會兒，就會選擇那個答案。電腦可用方向鍵。</p>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="題型">
+      <button type="button" id="modeDiv" data-mode="div" aria-pressed="true">除法</button>
+      <button type="button" id="modeMul" data-mode="mul" aria-pressed="false">乘法</button>
+      <button type="button" id="modeMix" data-mode="mix" aria-pressed="false">混合</button>
+    </div>
+    <div class="seg" role="group" aria-label="難度">
+      <button type="button" id="levelEasy" data-level="easy" aria-pressed="true">入門 2–5</button>
+      <button type="button" id="levelHard" data-level="hard" aria-pressed="false">進階 2–9</button>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="sensorBtn">用手機傾斜</button>
+      <button type="button" class="btn" id="calibBtn" hidden>重新置中</button>
+      <button type="button" class="btn" id="soundBtn" aria-pressed="true">聲音：開</button>
+    </div>
+  </div>
+
+  <details class="notes">
+    <summary>給組員的試玩說明</summary>
+    <ul>
+      <li>玩法：按住木板的一邊，木板就向那邊傾斜；小球滾到答案的洞並停一會兒，就會選擇那個答案。</li>
+      <li>答完會播放動畫：除法是把長方形用線平均分成幾份，看每份有多少個；乘法是一組一組加起來。</li>
+      <li>錯誤答案不是亂選的：例如 12 ÷ 4 的 8、16、48，分別代表做了減法、加法、乘法，答錯時會說明原因。</li>
+      <li>一輪 10 題，完成後會列出最常見的錯誤類型。</li>
+      <li>這是網頁試玩版，用來試遊戲手感和動畫解說。用手機打開時，可按「用手機傾斜」啟用傾斜感應（iPhone 會先問你是否允許）；在電腦上可按住木板或用方向鍵。正式 App 會用 App Inventor 的 OrientationSensor。</li>
+      <li>試玩時請留意：小球快慢合適嗎？動畫看得明白嗎？題目難度合適嗎？</li>
+    </ul>
+  </details>
+</div>
+
+<div class="overlay" id="sheet" hidden>
+  <div class="scrim"></div>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="verdict">
+    <div class="verdict" id="verdict">答對了！</div>
+    <p class="why" id="why"></p>
+    <div class="viz-box"><svg id="viz" viewBox="0 0 360 200" role="img" aria-label="動畫解說"></svg></div>
+    <p class="step" id="vizStep" aria-live="polite"></p>
+    <div class="eq" id="vizEq"></div>
+    <p class="check" id="vizCheck"></p>
+    <div class="row end">
+      <button type="button" class="btn" id="replayBtn">再看一次動畫</button>
+      <button type="button" class="btn primary" id="nextBtn">下一題</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="summary" hidden>
+  <div class="scrim"></div>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sumTitle">
+    <h2 id="sumTitle">完成這一輪！</h2>
+    <p class="sum-score" id="sumScore"></p>
+    <ul class="sum-list" id="sumList"></ul>
+    <p class="why" id="sumTip"></p>
+    <div class="row end"><button type="button" class="btn primary" id="againBtn">再玩一輪</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const ROUND = 10;
+  const S = { mode: 'div', level: 'easy', qi: 0, score: 0, errors: {}, q: null, locked: true, falling: false, sound: true, seen: new Set() };
+
+  /* ---------- small helpers ---------- */
+  const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+  const maxF = () => (S.level === 'easy' ? 5 : 9);
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  let toastTimer = 0;
+  function toast(msg, ms) {
+    const t = $('#toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, ms || 3000);
+  }
+
+  /* ---------- questions: every wrong option comes from a typical mistake ---------- */
+  const TAGS = {
+    'div-minus': { label: '把除法當成減法', tip: '除法的意思是「平均分」：先看要分成幾份，每一份要一樣多。' },
+    'div-plus': { label: '把除法當成加法', tip: '除法的意思是「平均分」：先看要分成幾份，每一份要一樣多。' },
+    'div-times': { label: '把除法當成乘法', tip: '先看清楚符號：「÷」是平均分，「×」是幾組合起來。' },
+    'mul-plus': { label: '把乘法當成加法', tip: '乘法是「幾組，每組幾個」：4 × 3 是 4 組，每組 3 個。' },
+    'mul-table': { label: '多算或少算了一組', tip: '一組一組數，例如 3、6、9、12，數完再對答案。' },
+    'mul-concat': { label: '把兩個數字拼在一起', tip: '乘法要計算一共有多少個，不是把數字拼起來。' },
+    'near': { label: '數錯了一點點', tip: '慢慢數，每一份都要數清楚。' }
+  };
+
+  function pickOptions(ans, cands) {
+    const out = [{ v: ans, tag: 'ok' }];
+    const used = new Set([ans]);
+    for (const [v, tag] of cands) {
+      if (out.length === 4) break;
+      if (!Number.isInteger(v) || v <= 0 || used.has(v)) continue;
+      used.add(v); out.push({ v, tag });
+    }
+    for (let k = 1; out.length < 4 && k < 60; k++) {
+      for (const v of [ans + k, ans - k]) {
+        if (out.length < 4 && v > 0 && !used.has(v)) { used.add(v); out.push({ v, tag: 'near' }); }
+      }
+    }
+    return shuffle(out);
+  }
+
+  function makeQ() {
+    const op = S.mode === 'mix' ? (Math.random() < 0.5 ? 'div' : 'mul') : S.mode;
+    let b = 4, c = 3; // first question is always the 12 ÷ 4 / 4 × 3 example
+    if (S.qi > 0) {
+      let tries = 0;
+      do { b = rnd(2, maxF()); c = rnd(2, maxF()); tries++; } while (S.seen.has(op + ':' + b + ':' + c) && tries < 40);
+    }
+    S.seen.add(op + ':' + b + ':' + c);
+    if (op === 'div') {
+      const a = b * c; // a shared equally into b parts gives c in each part
+      return { op, a, b, c, opts: pickOptions(c, [[a - b, 'div-minus'], [a + b, 'div-plus'], [a * b, 'div-times'], [c + 1, 'near'], [c - 1, 'near']]) };
+    }
+    const g = b, p = c, prod = g * p; // g groups with p in each group
+    const table = Math.random() < 0.5 ? prod + p : prod - p;
+    return { op, a: g, b: p, c: prod, opts: pickOptions(prod, [[g + p, 'mul-plus'], [table, 'mul-table'], [Number(String(g) + String(p)), 'mul-concat'], [prod + 1, 'near'], [prod - 1, 'near']]) };
+  }
+
+  function whyText(q, opt) {
+    const a = q.a, b = q.b, c = q.c, v = opt.v;
+    if (opt.tag === 'ok') {
+      return q.op === 'div' ? `把 ${a} 個平均分成 ${b} 份，每份 ${c} 個。` : `${a} 組，每組 ${b} 個，一共 ${c} 個。`;
+    }
+    switch (opt.tag) {
+      case 'div-minus': return `你選了 ${v}，可能是做了減法：${a} − ${b} = ${v}。除法是把 ${a} 個平均分成 ${b} 份。`;
+      case 'div-plus': return `你選了 ${v}，可能是做了加法：${a} + ${b} = ${v}。除法是把 ${a} 個平均分成 ${b} 份。`;
+      case 'div-times': return `你選了 ${v}，可能是做了乘法：${a} × ${b} = ${v}。看清楚，題目是除號「÷」。`;
+      case 'mul-plus': return `你選了 ${v}，可能是做了加法：${a} + ${b} = ${v}。乘法是 ${a} 組，每組 ${b} 個。`;
+      case 'mul-table': return v > c ? `你選了 ${v}，多算了一組：${a + 1} × ${b} = ${v}。` : `你選了 ${v}，少算了一組：${a - 1} × ${b} = ${v}。`;
+      case 'mul-concat': return `你選了 ${v}，這是把 ${a} 和 ${b} 拼在一起，不是相乘。`;
+      default: return q.op === 'div' ? `你選了 ${v}，差一點！再數一數每一份有多少個。` : `你選了 ${v}，差一點！再數一數一共有多少個。`;
+    }
+  }
+
+  /* ---------- board and question display ---------- */
+  const holes = Array.from(document.querySelectorAll('.hole'));
+  const HOLE = holes.map((h) => ({ x: Number(h.dataset.sx) * 0.76, y: Number(h.dataset.sy) * 0.76 }));
+  const plates = holes.map((h) => h.querySelector('.plate'));
+  const rings = holes.map((h) => h.querySelector('.ring circle'));
+  const surface = $('#surface'), board = $('#board'), ballEl = $('#ball'), wrap = $('#boardWrap');
+
+  function updateStatus() {
+    $('#qCount').textContent = `第 ${Math.min(S.qi + 1, ROUND)}／${ROUND} 題`;
+    $('#score').textContent = `★ ${S.score}`;
+  }
+  function renderQuestion() {
+    const q = S.q, expr = $('#expr');
+    expr.textContent = `${q.a} ${q.op === 'div' ? '÷' : '×'} ${q.b} = `;
+    const qm = document.createElement('span'); qm.className = 'q'; qm.textContent = '?';
+    expr.append(qm);
+    $('#meaning').textContent = q.op === 'div'
+      ? `把 ${q.a} 個平均分成 ${q.b} 份，每份有多少個？`
+      : `${q.a} 組，每組 ${q.b} 個，一共有多少個？`;
+    holes.forEach((h, i) => { h.classList.remove('is-good', 'is-bad', 'is-answer'); plates[i].textContent = String(q.opts[i].v); });
+    updateStatus();
+  }
+
+  /* ---------- physics: tilt pushes the ball; resting on a hole selects it ---------- */
+  const BALL_R = 0.1, CAPTURE = 0.22, MAGNET = 0.3, DWELL = 0.5, ACC = 2.4, FRICTION = 1.7, VMAX = 2.2, BOUNCE = 0.45;
+  const RING_LEN = 289.03;
+  const P = { x: 0, y: 0, vx: 0, vy: 0, dwell: [0, 0, 0, 0] };
+  const tilt = { x: 0, y: 0 };
+  const keys = new Set();
+  let pointerTilt = null, pointerId = null;
+  const sensor = { on: false, got: false, b: 0, g: 0, b0: 0, g0: 0 };
+
+  function resetBall() { P.x = 0; P.y = 0; P.vx = 0; P.vy = 0; P.dwell = [0, 0, 0, 0]; S.falling = false; }
+
+  function sensorTilt() {
+    const gx = (sensor.g - sensor.g0) / 20, by = (sensor.b - sensor.b0) / 20;
+    const raw = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+    const ang = ((raw % 360) + 360) % 360;
+    let x = gx, y = by;
+    if (ang === 90) { x = by; y = -gx; } else if (ang === 180) { x = -gx; y = -by; } else if (ang === 270) { x = -by; y = gx; }
+    const dz = (v) => (Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)));
+    return { x: dz(x), y: dz(y) };
+  }
+  function targetTilt() {
+    if (pointerTilt) return pointerTilt;
+    if (keys.size) {
+      let x = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0);
+      let y = (keys.has('d') ? 1 : 0) - (keys.has('u') ? 1 : 0);
+      const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+      return { x, y };
+    }
+    if (sensor.on && sensor.got) return sensorTilt();
+    return { x: 0, y: 0 };
+  }
+
+  function physics(dt) {
+    P.vx += tilt.x * ACC * dt; P.vy += tilt.y * ACC * dt;
+    let pick = -1;
+    for (let i = 0; i < 4; i++) {
+      const dx = HOLE[i].x - P.x, dy = HOLE[i].y - P.y, d = Math.hypot(dx, dy);
+      if (d < MAGNET) { P.vx += dx * 7 * dt; P.vy += dy * 7 * dt; }
+      if (d < CAPTURE) { P.dwell[i] += dt; if (P.dwell[i] >= DWELL) pick = i; }
+      else P.dwell[i] = Math.max(0, P.dwell[i] - dt * 2.5);
+    }
+    const damp = Math.exp(-FRICTION * dt); P.vx *= damp; P.vy *= damp;
+    const sp = Math.hypot(P.vx, P.vy); if (sp > VMAX) { P.vx *= VMAX / sp; P.vy *= VMAX / sp; }
+    P.x += P.vx * dt; P.y += P.vy * dt;
+    const L = 1 - BALL_R;
+    if (P.x > L) { P.x = L; P.vx = -P.vx * BOUNCE; } else if (P.x < -L) { P.x = -L; P.vx = -P.vx * BOUNCE; }
+    if (P.y > L) { P.y = L; P.vy = -P.vy * BOUNCE; } else if (P.y < -L) { P.y = -L; P.vy = -P.vy * BOUNCE; }
+    if (pick >= 0) choose(pick);
+  }
+
+  function draw() {
+    const W = surface.clientWidth, H = surface.clientHeight, d = ballEl.offsetWidth;
+    const px = (P.x + 1) / 2 * W - d / 2, py = (P.y + 1) / 2 * H - d / 2;
+    ballEl.classList.toggle('fall', S.falling);
+    ballEl.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) scale(${S.falling ? 0.62 : 1})`;
+    if (!reduceMotion) board.style.transform = `rotateX(${(-tilt.y * 6).toFixed(2)}deg) rotateY(${(tilt.x * 6).toFixed(2)}deg)`;
+    for (let i = 0; i < 4; i++) rings[i].style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, P.dwell[i] / DWELL)));
+  }
+
+  let last = 0;
+  function loop(now) {
+    const dt = last ? Math.min(0.033, (now - last) / 1000) : 0.016;
+    last = now;
+    const tt = S.locked ? { x: 0, y: 0 } : targetTilt();
+    const k = 1 - Math.exp(-dt * 14);
+    tilt.x += (tt.x - tilt.x) * k; tilt.y += (tt.y - tilt.y) * k;
+    if (!S.locked) physics(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- input: press-and-hold on the board, arrow keys, or the phone's tilt sensor ---------- */
+  function tiltFromPointer(e) {
+    const r = wrap.getBoundingClientRect();
+    const x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+    const y = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+    const m = Math.hypot(x, y);
+    if (m < 0.1) return { x: 0, y: 0 };
+    const s = Math.min(1, m * 1.25) / m;
+    return { x: x * s, y: y * s };
+  }
+  wrap.addEventListener('pointerdown', (e) => {
+    if (S.locked) return;
+    pointerId = e.pointerId;
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
+    pointerTilt = tiltFromPointer(e);
+    e.preventDefault();
+  });
+  wrap.addEventListener('pointermove', (e) => { if (pointerTilt && e.pointerId === pointerId) pointerTilt = tiltFromPointer(e); });
+  const endPointer = (e) => { if (e.pointerId === pointerId) { pointerTilt = null; pointerId = null; } };
+  wrap.addEventListener('pointerup', endPointer);
+  wrap.addEventListener('pointercancel', endPointer);
+  wrap.addEventListener('lostpointercapture', endPointer);
+
+  const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd', a: 'l', d: 'r', w: 'u', s: 'd', A: 'l', D: 'r', W: 'u', S: 'd' };
+  window.addEventListener('keydown', (e) => {
+    const k = KEYMAP[e.key];
+    if (!k || e.altKey || e.ctrlKey || e.metaKey || S.locked) return;
+    keys.add(k); e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => { const k = KEYMAP[e.key]; if (k) keys.delete(k); });
+  window.addEventListener('blur', () => keys.clear());
+
+  const SENSOR_MSG = '這個瀏覽器讀取不到手機的傾斜感應器。請按住木板或用方向鍵；正式 App 會用 App Inventor 的方向感應器。';
+  function onOrientation(e) {
+    if (e.beta == null || e.gamma == null) return;
+    sensor.b = e.beta; sensor.g = e.gamma;
+    if (!sensor.got) {
+      sensor.got = true; sensor.b0 = e.beta; sensor.g0 = e.gamma;
+      $('#calibBtn').hidden = false;
+      toast('已啟用手機傾斜：慢慢傾斜手機，小球就會滾動。', 3500);
+    }
+  }
+  async function enableSensor() {
+    if (sensor.on && sensor.got) { calibrate(); return; }
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') throw new Error('denied');
+      }
+      window.addEventListener('deviceorientation', onOrientation);
+      sensor.on = true;
+      setTimeout(() => {
+        if (!sensor.got) { sensor.on = false; window.removeEventListener('deviceorientation', onOrientation); toast(SENSOR_MSG, 7000); }
+      }, 1500);
+    } catch (err) { toast(SENSOR_MSG, 7000); }
+  }
+  function calibrate() { sensor.b0 = sensor.b; sensor.g0 = sensor.g; toast('已重新置中：現在的拿法就當作「平放」。', 2500); }
+
+  /* ---------- sound (optional, starts only after the player acts) ---------- */
+  let ac = null;
+  function beep(seq) {
+    if (!S.sound) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ac = ac || new AC();
+      if (ac.state === 'suspended') ac.resume();
+      let t = ac.currentTime + 0.01;
+      for (const [f, d] of seq) {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g); g.connect(ac.destination);
+        o.start(t); o.stop(t + d + 0.05);
+        t += d * 0.85;
+      }
+    } catch (err) { /* sound is optional */ }
+  }
+
+  /* ---------- choosing an answer ---------- */
+  function choose(i) {
+    if (S.locked) return;
+    S.locked = true; pointerTilt = null; keys.clear();
+    const q = S.q, opt = q.opts[i], ok = opt.tag === 'ok';
+    P.vx = 0; P.vy = 0; P.x = HOLE[i].x; P.y = HOLE[i].y; P.dwell = [0, 0, 0, 0];
+    S.falling = true;
+    holes[i].classList.add(ok ? 'is-good' : 'is-bad');
+    if (ok) S.score += 1;
+    else {
+      holes[q.opts.findIndex((o) => o.tag === 'ok')].classList.add('is-answer');
+      S.errors[opt.tag] = (S.errors[opt.tag] || 0) + 1;
+    }
+    updateStatus();
+    beep(ok ? [[660, 0.12], [880, 0.22]] : [[247, 0.16], [196, 0.3]]);
+    setTimeout(() => openExplain(opt), reduceMotion ? 60 : 520);
+  }
+
+  /* ---------- overlays ---------- */
+  const sheet = $('#sheet'), summary = $('#summary');
+  const hideTimers = new Map();
+  function openOverlay(o) {
+    clearTimeout(hideTimers.get(o));
+    o.hidden = false;
+    void o.offsetWidth;
+    o.classList.add('open');
+  }
+  function closeOverlay(o) {
+    o.classList.remove('open');
+    hideTimers.set(o, setTimeout(() => { o.hidden = true; }, reduceMotion ? 0 : 340));
+  }
+  function openExplain(opt) {
+    const ok = opt.tag === 'ok', v = $('#verdict');
+    v.textContent = ok ? '答對了！' : '再想一想';
+    v.className = 'verdict ' + (ok ? 'good' : 'bad');
+    $('#why').textContent = whyText(S.q, opt);
+    $('#nextBtn').textContent = S.qi + 1 >= ROUND ? '看看成績' : '下一題';
+    openOverlay(sheet);
+    playViz(S.q);
+    setTimeout(() => { try { $('#nextBtn').focus({ preventScroll: true }); } catch (err) { /* focus is optional */ } }, 60);
+  }
+  function nextQ() {
+    clearViz(); closeOverlay(sheet);
+    S.qi += 1;
+    if (S.qi >= ROUND) { setTimeout(showSummary, reduceMotion ? 0 : 220); return; }
+    S.q = makeQ(); renderQuestion(); resetBall(); S.locked = false;
+  }
+  function showSummary() {
+    S.locked = true;
+    $('#sumScore').textContent = `答對 ${S.score}／${ROUND} 題`;
+    const list = $('#sumList');
+    list.textContent = '';
+    const entries = Object.entries(S.errors).sort((x, y) => y[1] - x[1]);
+    if (!entries.length) {
+      const li = document.createElement('li'); li.textContent = '全部答對，沒有出錯！'; list.append(li);
+    }
+    for (const [tag, n] of entries) {
+      const li = document.createElement('li'); li.textContent = `${(TAGS[tag] || TAGS.near).label}：${n} 次`; list.append(li);
+    }
+    $('#sumTip').textContent = entries.length ? '建議：' + (TAGS[entries[0][0]] || TAGS.near).tip : '可以試試「進階」或「混合」。';
+    openOverlay(summary);
+  }
+  function newRound() {
+    S.qi = 0; S.score = 0; S.errors = {}; S.seen = new Set();
+    S.q = makeQ(); renderQuestion(); resetBall(); S.locked = false;
+  }
+  function closeAll() {
+    clearViz();
+    if (!sheet.hidden) closeOverlay(sheet);
+    if (!summary.hidden) closeOverlay(summary);
+  }
+
+  /* ---------- animated explanation: a rectangle split into equal parts ---------- */
+  const NS = 'http://www.w3.org/2000/svg';
+  const VB = { x: 10, y: 20, w: 340, h: 126 };
+  const COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'];
+  let vizTimers = [];
+  const later = (ms, fn) => { vizTimers.push(setTimeout(fn, reduceMotion ? Math.min(ms, 40) : ms)); };
+  function clearViz() { vizTimers.forEach(clearTimeout); vizTimers = []; }
+  function mk(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k of Object.keys(attrs)) e.setAttribute(k, String(attrs[k]));
+    parent.appendChild(e);
+    return e;
+  }
+  const say = (text) => { $('#vizStep').textContent = text; };
+  function fit(n, w, h) {
+    let best = null;
+    for (let cols = 1; cols <= n; cols++) {
+      const rows = Math.ceil(n / cols), cell = Math.min(w / cols, h / rows);
+      if (!best || cell > best.cell) best = { cols, rows, cell };
+    }
+    return best;
+  }
+  function layout(parts, per, total) {
+    const segW = VB.w / parts, pad = 8;
+    const fp = fit(per, segW - pad * 2, VB.h - pad * 2);
+    const fs = fit(total, VB.w - pad * 2, VB.h - pad * 2);
+    const cell = Math.min(fp.cell, fs.cell, 30), size = cell * 0.78, off = (cell - size) / 2;
+    const at = (cols, rows, x0, w, i) => {
+      const gx = x0 + (w - cols * cell) / 2, gy = VB.y + (VB.h - rows * cell) / 2;
+      return { x: gx + (i % cols) * cell + off, y: gy + Math.floor(i / cols) * cell + off };
+    };
+    return {
+      parts, size, segW,
+      part: (k, j) => at(fp.cols, fp.rows, VB.x + k * segW, segW, j),
+      spread: (i) => at(fs.cols, fs.rows, VB.x, VB.w, i)
+    };
+  }
+  function cube(svg, L, pos, fill) {
+    const r = mk('rect', { width: L.size.toFixed(2), height: L.size.toFixed(2), rx: (L.size * 0.24).toFixed(2), class: 'cube' }, svg);
+    r.style.transform = `translate(${pos.x.toFixed(2)}px, ${pos.y.toFixed(2)}px)`;
+    r.style.fill = fill;
+    return r;
+  }
+  function drawBar(svg) { mk('rect', { x: VB.x, y: VB.y, width: VB.w, height: VB.h, rx: 14, class: 'bar' }, svg); }
+  function drawDividers(svg, parts, animate) {
+    const len = VB.h - 10;
+    for (let k = 1; k < parts; k++) {
+      const x = (VB.x + k * VB.w / parts).toFixed(2);
+      const ln = mk('line', { x1: x, y1: VB.y + 5, x2: x, y2: VB.y + VB.h - 5, class: 'divider' }, svg);
+      ln.style.strokeDasharray = String(len);
+      ln.style.strokeDashoffset = animate ? String(len) : '0';
+      if (animate) later(30 + k * 110, () => { void ln.getBoundingClientRect(); ln.style.strokeDashoffset = '0'; });
+    }
+  }
+  function drawLabel(svg, L, k, text, color) {
+    const x0 = VB.x + k * L.segW, x1 = x0 + L.segW, yb = VB.y + VB.h + 8;
+    const g = mk('g', { class: 'plab' }, svg);
+    const br = mk('path', { d: `M${(x0 + 7).toFixed(1)} ${yb} v5 H${(x1 - 7).toFixed(1)} v-5`, class: 'brace' }, g);
+    br.style.stroke = color;
+    const t = mk('text', { x: ((x0 + x1) / 2).toFixed(1), y: yb + 30, 'text-anchor': 'middle', class: 'pnum' }, g);
+    t.textContent = text;
+    void g.getBoundingClientRect();
+    g.classList.add('on');
+  }
+  function showEq(prefix, ans, check) {
+    const eq = $('#vizEq');
+    eq.textContent = prefix;
+    const b = document.createElement('b'); b.textContent = String(ans); eq.append(b);
+    eq.classList.add('on');
+    const ck = $('#vizCheck'); ck.textContent = check; ck.classList.add('on');
+  }
+
+  function vizDiv(svg, q) {
+    const a = q.a, b = q.b, c = q.c;
+    const L = layout(b, c, a);
+    drawBar(svg);
+    const cubes = [];
+    for (let i = 0; i < a; i++) { const r = cube(svg, L, L.spread(i), 'var(--cube-plain)'); r.style.opacity = '0'; cubes.push(r); }
+    say(`這裏一共有 ${a} 個。`);
+    cubes.forEach((r, i) => later(40 + i * 28, () => { r.style.opacity = '1'; }));
+    const t1 = Math.max(1000, 40 + a * 28 + 500);
+    later(t1, () => { say(`用線把長方形平均分成 ${b} 份。`); drawDividers(svg, b, true); });
+    const t2 = t1 + 1100, st = Math.max(50, Math.min(120, 2600 / a));
+    later(t2, () => say('一個一個輪流放進每一份……'));
+    cubes.forEach((r, i) => later(t2 + i * st, () => {
+      const k = i % b, p = L.part(k, Math.floor(i / b));
+      r.style.transform = `translate(${p.x.toFixed(2)}px, ${p.y.toFixed(2)}px)`;
+      r.style.fill = COLORS[k % COLORS.length];
+    }));
+    const t3 = t2 + a * st + 650;
+    later(t3, () => say(`每一份都有 ${c} 個。`));
+    for (let k = 0; k < b; k++) later(t3 + k * 240, () => drawLabel(svg, L, k, String(c), COLORS[k % COLORS.length]));
+    const t4 = t3 + b * 240 + 450;
+    later(t4, () => {
+      say(`所以 ${a} ÷ ${b} = ${c}。`);
+      showEq(`${a} ÷ ${b} = `, c, `檢查：${b} 份 × 每份 ${c} 個 = ${a} 個 ✓`);
+    });
+  }
+
+  function vizMul(svg, q) {
+    const a = q.a, b = q.b, c = q.c; // a groups with b in each group
+    const L = layout(a, b, c);
+    drawBar(svg);
+    drawDividers(svg, a, true);
+    say(`一共 ${a} 組，每組 ${b} 個。`);
+    const gd = Math.max(520, b * 110 + 260);
+    for (let k = 0; k < a; k++) {
+      later(900 + k * gd, () => {
+        for (let j = 0; j < b; j++) {
+          const p = L.part(k, j);
+          const r = cube(svg, L, { x: p.x, y: p.y - 24 }, COLORS[k % COLORS.length]);
+          r.style.opacity = '0';
+          later(30 + j * 100, () => {
+            void r.getBoundingClientRect();
+            r.style.opacity = '1';
+            r.style.transform = `translate(${p.x.toFixed(2)}px, ${p.y.toFixed(2)}px)`;
+          });
+        }
+        drawLabel(svg, L, k, String(b), COLORS[k % COLORS.length]);
+        const seq = [];
+        for (let n = 1; n <= k + 1; n++) seq.push(n * b);
+        say(`一組一組數：${seq.join('、')}`);
+      });
+    }
+    later(900 + a * gd + 300, () => {
+      say(`所以 ${a} × ${b} = ${c}。`);
+      showEq(`${a} × ${b} = `, c, `反過來：${c} ÷ ${a} = ${b}（把 ${c} 個平均分成 ${a} 份，每份 ${b} 個）`);
+    });
+  }
+
+  function playViz(q) {
+    clearViz();
+    const svg = $('#viz');
+    svg.textContent = '';
+    const eq = $('#vizEq'), ck = $('#vizCheck');
+    eq.classList.remove('on'); eq.textContent = '';
+    ck.classList.remove('on'); ck.textContent = '';
+    svg.setAttribute('aria-label', q.op === 'div'
+      ? `動畫：把 ${q.a} 個平均分成 ${q.b} 份，每份 ${q.c} 個`
+      : `動畫：${q.a} 組，每組 ${q.b} 個，一共 ${q.c} 個`);
+    if (q.op === 'div') vizDiv(svg, q); else vizMul(svg, q);
+  }
+
+  /* ---------- settings ---------- */
+  function syncButtons() {
+    document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+    document.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === S.level)));
+    const sb = $('#soundBtn');
+    sb.setAttribute('aria-pressed', String(S.sound));
+    sb.textContent = S.sound ? '聲音：開' : '聲音：關';
+  }
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    if (S.mode === b.dataset.mode) return;
+    S.mode = b.dataset.mode; syncButtons(); closeAll(); newRound();
+    toast(`已轉為「${b.textContent}」，由第 1 題開始。`, 2200);
+  }));
+  document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => {
+    if (S.level === b.dataset.level) return;
+    S.level = b.dataset.level; syncButtons(); closeAll(); newRound();
+    toast(`已轉為「${b.textContent}」，由第 1 題開始。`, 2200);
+  }));
+  $('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; syncButtons(); if (S.sound) beep([[660, 0.08]]); });
+  $('#sensorBtn').addEventListener('click', enableSensor);
+  $('#calibBtn').addEventListener('click', calibrate);
+  $('#replayBtn').addEventListener('click', () => playViz(S.q));
+  $('#nextBtn').addEventListener('click', nextQ);
+  $('#againBtn').addEventListener('click', () => { closeOverlay(summary); newRound(); });
+
+  /* ---------- boot (keeps settings when the page is updated while open) ---------- */
+  let started = false;
+  function start(data) {
+    if (started) return;
+    started = true;
+    if (data && typeof data === 'object') {
+      if (['div', 'mul', 'mix'].includes(data.mode)) S.mode = data.mode;
+      if (['easy', 'hard'].includes(data.level)) S.level = data.level;
+      if (typeof data.sound === 'boolean') S.sound = data.sound;
+    }
+    ballEl.style.left = '0'; ballEl.style.top = '0';
+    syncButtons();
+    newRound();
+    requestAnimationFrame(loop);
+  }
+  const hot = window.claude && window.claude.hot;
+  try { if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ mode: S.mode, level: S.level, sound: S.sound })); } catch (err) { /* optional */ }
+  try {
+    if (hot && typeof hot.ready === 'function') hot.ready(start);
+    else start((hot && hot.data) || {});
+  } catch (err) { start({}); }
+  setTimeout(() => start({}), 1200);
+})();
+</script>
+
+</body>
+</html>
