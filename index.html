@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="小學乘除法滾球遊戲：傾斜木板把小球滾進正確答案的洞，答完用「長方形平均分」動畫解說。">
+<meta name="description" content="小學乘除法練習：傾斜或點按選取答案，確認後判分，以物件分組及平均分動畫解說。">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>乘除滾滾球</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -186,10 +186,307 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after{transition-duration:.01ms !important; animation-duration:.01ms !important}
 }
+
+/* v2: retain wood/brass styling; keep all answer controls in the first viewport. */
+*,*::before,*::after{box-sizing:border-box}
+.app{gap:8px;padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:24px}
+.top{gap:6px;flex-wrap:nowrap}
+.top h1{font-size:clamp(1.08rem,4.9vw,1.45rem);letter-spacing:.02em;white-space:nowrap}
+.status{gap:4px;font-size:.82rem}
+.pill{padding:3px 7px}
+.expr{font-size:clamp(2.5rem,11vw,3.7rem)}
+.meaning{font-size:1rem;line-height:1.35;min-height:2.7em}
+.input-modes{align-self:center}
+.input-modes button{min-height:40px;padding:5px 18px}
+.board-wrap,.answer-grid{width:min(100%,440px,calc(100svh - 276px));max-width:440px;margin-inline:auto}
+.board-wrap{flex:none}
+.answer-grid{aspect-ratio:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border-radius:26px;background:linear-gradient(145deg,var(--wood-2),var(--wood-3));box-shadow:var(--shadow),inset 0 2px 0 rgba(255,255,255,.28)}
+.answer-btn{font:800 clamp(2rem,10vw,3rem)/1.2 var(--f-num);border:3px solid transparent;border-radius:18px;cursor:pointer;background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:var(--brass-ink);box-shadow:0 3px 0 rgba(0,0,0,.22);min-width:0;min-height:48px}
+.answer-btn[aria-pressed="true"]{border-color:var(--accent);outline:3px solid var(--ring);outline-offset:2px}
+.hole.is-selected .plate{outline:3px solid var(--ring);outline-offset:3px}
+.submit-row{width:100%;max-width:440px;margin-inline:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
+#selectedAnswer{margin:0;font-size:1.03rem;font-weight:700;white-space:nowrap}
+#confirmBtn{min-height:46px;padding:7px 16px}
+button:disabled{cursor:default;opacity:.5}
+.hint{font-size:.91rem;line-height:1.4}
+.controls{gap:8px}
+.controls .seg button{min-height:40px;padding:5px 12px}
+.sheet-card{overscroll-behavior:contain}
+/* Let wrapped narration grow before the equation, even when the sheet must scroll. */
+#sheet .sheet-card{display:flex;flex-direction:column;scroll-behavior:auto}
+#sheet .sheet-card>*{flex-shrink:0}
+#sheet .step{line-height:1.5;min-height:1.5em;overflow-wrap:anywhere}
+.concept{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--paper)}
+.concept h3{margin:0 0 8px;font-size:1.05rem}
+.concept .btn{min-height:44px}
+#conceptFeedback{margin:8px 0 0}
+.concept-note{font-size:.85rem;color:var(--ink-soft);margin:5px 0 0}
+.concept [aria-pressed="true"]{outline:2px solid var(--ring)}
+#sumConcept{margin:0;color:var(--ink-soft)}
+@media(max-height:680px){.app{gap:6px}.input-modes button{min-height:38px}.expr{font-size:2.6rem}.meaning{font-size:.96rem}.board-wrap,.answer-grid{width:min(100%,440px,calc(100svh - 260px))}}
+
+/* Phase 1 entry and optional hint controls. */
+.game-entry{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.game-entry .input-modes{margin:0}
+.game-entry #modeCandy{min-height:40px;padding:5px 14px}
+.submit-row{grid-template-columns:minmax(0,1fr) auto auto}
+.submit-row .hint-trigger{min-height:46px;padding:7px 12px}
+#hintOverlay{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:calc(100svh - 24px);border:1px solid var(--line);border-radius:20px;background:var(--paper);color:var(--ink);padding:18px;box-shadow:var(--shadow);overscroll-behavior:contain}
+#hintOverlay::backdrop{background:rgba(24,17,9,.55)}
+#hintOverlay h2{margin:0 0 6px;font-size:1.25rem}
+#hintBody{display:grid;gap:12px}
+#hintBody p{margin:0;line-height:1.5}
+#hintOverlay .row{margin-top:14px;justify-content:flex-end}
+#hintOverlay .btn{min-height:48px}
+.hint-dots{display:grid;grid-template-columns:repeat(var(--hint-columns),12px);gap:4px;justify-content:center;justify-self:center}
+.hint-dots i{width:12px;height:12px;border-radius:50%;background:var(--brass-2);border:1px solid var(--brass-ink)}
+.hint-groups{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.hint-group{display:grid;align-content:center;justify-content:center;min-width:34px;min-height:32px;padding:5px;border:2px solid var(--wood-3);border-radius:8px;background:#fff8df}
+.hint-sequence{overflow-wrap:anywhere;font-size:1.2rem;font-weight:700}
+.hint-flash{outline:2px solid var(--brass-ink);outline-offset:2px;animation:hint-pulse 1.1s ease-in-out 3}
+@keyframes hint-pulse{50%{outline-color:#d49632;box-shadow:0 0 0 5px #ffe095}}
+@media(max-height:680px){#practiceApp .board-wrap,#practiceApp .answer-grid{width:min(100%,440px,max(180px,calc(100svh - 352px)))}}
+@media(prefers-reduced-motion:reduce){.hint-flash{animation:none}}
+/* Candy practice: bright candy-shop theme for young children.
+   Layout, 48 px touch targets and the one-screen board on 360×640 follow the Phase 1 rules. */
+.candy-app, .candy-app * { box-sizing: border-box; }
+body:has(#candyApp:not([hidden])) {
+  background:
+    radial-gradient(circle, #ffffffb3 2px, transparent 2.5px) 0 0 / 22px 22px,
+    linear-gradient(165deg, #ffe4f1 0%, #f1e8ff 45%, #dff7ff 100%) fixed;
+}
+.candy-app {
+  --candy-ink: #3b1f5c; --candy-soft: #6d5a86; --candy-line: #eadcff;
+  max-width: 560px; margin: 0 auto; padding: 6px max(9px, env(safe-area-inset-right, 0px)) 12px
+    max(9px, env(safe-area-inset-left, 0px)); display: grid; gap: 5px;
+  line-height: 1.3; color: var(--candy-ink);
+}
+
+/* Header */
+.candy-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 5px; }
+.candy-top h1 {
+  margin: 0; font-size: 1.6rem; white-space: nowrap; display: flex; align-items: center; gap: 3px;
+  background: linear-gradient(90deg, #ff4f97, #ff922b 60%, #f59f00);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.candy-top h1::before {
+  content: ""; width: 32px; height: 22px; flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Cpath d='M16 20 L2 7 L6 20 L2 33 Z' fill='%23ff922b'/%3E%3Cpath d='M44 20 L58 7 L54 20 L58 33 Z' fill='%23ff922b'/%3E%3Cellipse cx='30' cy='20' rx='16' ry='14' fill='%23ff5c9d' stroke='%23c2255c' stroke-width='2'/%3E%3Cpath d='M20 11 L30 33 M28 7 L38 30' stroke='%23fff' stroke-width='3' opacity='.55'/%3E%3Cellipse cx='24' cy='13' rx='5' ry='3' fill='%23fff' opacity='.85'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.candy-tally { justify-self: end; display: flex; flex-wrap: wrap; justify-content: end; gap: 3px;
+  font: 800 .76rem var(--f-num, system-ui); color: var(--candy-soft); }
+.candy-tally > span { padding: 1px 6px; border-radius: 999px; background: #fff; border: 2px solid var(--candy-line); white-space: nowrap; }
+#candyScore { color: #b7791f; background: #fff8db; border-color: #ffe08a; }
+
+/* Buttons */
+.candy-button {
+  min-height: 48px; min-width: 48px; border-radius: 999px; border: 2px solid var(--candy-line);
+  padding: 4px 12px; background: #fff; color: var(--candy-ink); font: inherit; font-weight: 800;
+  cursor: pointer; box-shadow: 0 3px 0 var(--candy-line); transition: transform .12s, box-shadow .12s;
+}
+.candy-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--candy-line); }
+.candy-back { justify-self: start; white-space: nowrap; border-color: #ffc2da; box-shadow: 0 3px 0 #ffc2da; }
+.candy-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.candy-modes [aria-pressed="true"] {
+  background: linear-gradient(135deg, #ff5c9d, #ff922b); color: #fff; border-color: #e64980;
+  box-shadow: 0 3px 0 #c2255c; text-shadow: 0 1px 0 #0003;
+}
+.candy-primary {
+  background: linear-gradient(180deg, #69db7c, #2f9e44); color: #fff; border-color: #2b8a3e;
+  box-shadow: 0 3px 0 #237032; text-shadow: 0 1px 0 #0003;
+}
+.candy-button:disabled, .candy-primary:disabled, .candy-modes [aria-pressed="true"]:disabled {
+  cursor: default; color: #8f82a6; background: #f4f0fa; border-color: #e2d9f0; box-shadow: none; text-shadow: none;
+}
+
+/* Question */
+.candy-exercise, .candy-work, .candy-review { display: grid; gap: 5px; }
+.candy-prompt { margin: 0; font-size: clamp(1.05rem, 4.8vw, 1.26rem); text-align: center; line-height: 1.25; color: var(--candy-ink); }
+.candy-guide { margin: 0; color: var(--candy-soft); font-size: .86rem; text-align: center; }
+
+/* Board */
+.candy-board {
+  display: grid; gap: 4px; padding: 4px; border-radius: 20px;
+  background: radial-gradient(circle, #ffd6e899 1.6px, transparent 2px) 0 0 / 16px 16px,
+    linear-gradient(160deg, #fffafd, #f6f1ff);
+  border: 3px solid #ffd1e6; box-shadow: 0 6px 16px #b26ad333;
+  user-select: none; -webkit-user-select: none;
+}
+.candy-baskets { display: grid; gap: 4px; }
+.candy-zone {
+  --bk: #ff8fb8; --bk-bg: #ffeaf3; --bk-ink: #c2185b;
+  position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center;
+  gap: 4px; min-height: 50px; padding: 0 3px 0 0; border: 2px solid var(--bk); border-radius: 16px;
+  background: var(--bk-bg); color: var(--candy-ink); transition: transform .15s, box-shadow .15s;
+}
+.candy-basket {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M9 15 Q20 -1 31 15' fill='none' stroke='%23000' stroke-opacity='.16' stroke-width='3'/%3E%3Cpath d='M3 15 H37 L33 32 H7 Z' fill='%23000' fill-opacity='.1'/%3E%3Cpath d='M11 19 V29 M17 19 V30 M23 19 V30 M29 19 V29 M6 23 H34' stroke='%23fff' stroke-opacity='.7' stroke-width='2'/%3E%3C/svg%3E") right 7px center / 34px 29px no-repeat,
+    repeating-linear-gradient(45deg, #ffffff80 0 3px, transparent 3px 9px),
+    repeating-linear-gradient(-45deg, #0000000a 0 3px, transparent 3px 9px),
+    var(--bk-bg);
+  box-shadow: inset 0 -3px 0 #0000000d;
+}
+.candy-basket[data-candy-zone="0"] { --bk: #ff8fb8; --bk-bg: #ffeaf3; --bk-ink: #c2185b; }
+.candy-basket[data-candy-zone="1"] { --bk: #74c0fc; --bk-bg: #e7f5ff; --bk-ink: #1864ab; }
+.candy-basket[data-candy-zone="2"] { --bk: #69db7c; --bk-bg: #ebfbee; --bk-ink: #2b8a3e; }
+.candy-basket[data-candy-zone="3"] { --bk: #b197fc; --bk-bg: #f3f0ff; --bk-ink: #5f3dc4; }
+.candy-basket[data-candy-zone="4"] { --bk: #ffa94d; --bk-bg: #fff4e6; --bk-ink: #d9480f; }
+.candy-tray { --bk: #ffb3d1; --bk-bg: #fff; --bk-ink: #c2255c; padding-top: 7px; background: #fff; }
+.candy-tray::before {
+  content: ""; position: absolute; left: 12px; right: 12px; top: 0; height: 7px; border-radius: 0 0 8px 8px;
+  background: repeating-linear-gradient(90deg, #ff7eb3 0 12px, #fff 12px 24px); box-shadow: 0 1px 0 #ffb3d1;
+}
+.candy-zone-label {
+  min-width: 48px; min-height: 48px; border: 2px solid var(--bk); margin: 0; padding: 2px 1px;
+  background: #fff; color: var(--bk-ink); border-radius: 12px; font: 800 .76rem/1.15 var(--f-zh, system-ui);
+  display: grid; align-content: center; justify-content: center; gap: 1px; cursor: inherit;
+  box-shadow: 0 2px 0 var(--bk);
+}
+.candy-count { font: 800 1.05rem/1.1 var(--f-num, system-ui); color: var(--bk-ink); }
+.candy-goal { font: 800 .66rem/1.1 var(--f-zh, system-ui); color: var(--candy-soft); }
+.candy-zone.is-over {
+  transform: scale(1.02); z-index: 1;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--bk), 0 6px 14px #0002;
+}
+.candy-zone.is-extreme { border-color: #ff922b; box-shadow: 0 0 0 3px #ffd8a8; animation: candy-shake .45s ease-in-out 2; }
+.candy-zone.is-extreme .candy-zone-label { background: #fff4e6; border-color: #ff922b; color: #d9480f; }
+.candy-zone.is-hinted { outline: 3px dashed #15aabf; outline-offset: 2px; }
+.candy-zone.is-over.is-hinted { outline-style: solid; }
+.candy-zone.is-bump .candy-count { animation: candy-bump .45s ease-out; }
+
+/* Candy packets: a wrapped sweet whose colour follows its number */
+.candy-packets { display: grid; grid-template-columns: repeat(5, minmax(48px, 63px)); gap: 2px 3px; min-height: 48px; }
+.candy-packet {
+  --cw: #ff5c9d; --cl: #ffd1e4; --cd: #a61e4d;
+  display: grid; place-items: center; position: relative; isolation: isolate;
+  min-width: 48px; min-height: 48px; margin: 0; border: 0; border-radius: 12px; padding: 0;
+  background: transparent; color: #fff; font: 800 1.3rem var(--f-num, system-ui);
+  text-shadow: -1.5px -1.5px 0 var(--cd), 1.5px -1.5px 0 var(--cd), -1.5px 1.5px 0 var(--cd), 1.5px 1.5px 0 var(--cd), 0 2px 1px var(--cd);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: transform .15s;
+}
+.candy-packet::after {
+  content: ""; position: absolute; inset: 9px 0; z-index: -2;
+  clip-path: polygon(0 8%, 36% 40%, 64% 40%, 100% 8%, 90% 50%, 100% 92%, 64% 60%, 36% 60%, 0 92%, 10% 50%);
+  background: repeating-linear-gradient(90deg, #ffffff66 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, var(--cl), var(--cw) 55%, var(--cd));
+}
+.candy-packet::before {
+  content: ""; position: absolute; inset: 6px 11px; border-radius: 50%; z-index: -1;
+  background:
+    radial-gradient(ellipse at 32% 26%, #ffffffe0 0 15%, transparent 16%),
+    repeating-linear-gradient(-50deg, #ffffff4d 0 4px, transparent 4px 9px),
+    radial-gradient(circle at 45% 40%, var(--cl), var(--cw) 58%, var(--cd));
+  border: 2px solid var(--cd); box-shadow: 0 2px 4px #0000002e;
+}
+.candy-packet[data-value="1"] { --cw: #ff5c9d; --cl: #ffd1e4; --cd: #a61e4d; }
+.candy-packet[data-value="2"] { --cw: #ff922b; --cl: #ffd8b0; --cd: #a84300; }
+.candy-packet[data-value="3"] { --cw: #fcc419; --cl: #fff3bf; --cd: #8f5f00; }
+.candy-packet[data-value="4"] { --cw: #40c057; --cl: #c3f5cf; --cd: #1b6e2f; }
+.candy-packet[data-value="5"] { --cw: #15aabf; --cl: #b5eef6; --cd: #0b6275; }
+.candy-packet[data-value="6"] { --cw: #4c8dff; --cl: #cfe0ff; --cd: #1c49a3; }
+.candy-packet[data-value="7"] { --cw: #9c6cff; --cl: #e3d6ff; --cd: #5128b8; }
+.candy-packet[data-value="8"] { --cw: #fa5252; --cl: #ffd0d0; --cd: #a51111; }
+.candy-packet[data-value="9"] { --cw: #b5713d; --cl: #f0d2b8; --cd: #643512; }
+.candy-packet:hover { transform: translateY(-2px) rotate(-4deg); }
+.candy-packet[aria-pressed="true"] { outline: 3px solid #15aabf; outline-offset: 0; }
+.candy-packet.is-drag-origin, .candy-packet.is-snap-target { opacity: .28; }
+.candy-tray .candy-packet { animation: candy-bob 2.6s ease-in-out infinite; }
+.candy-tray .candy-packet:nth-child(2n) { animation-delay: -.9s; }
+.candy-tray .candy-packet:nth-child(3n) { animation-delay: -1.7s; }
+.candy-packet.is-new { animation: candy-pop .38s cubic-bezier(.3, 1.6, .5, 1); }
+.candy-drag-ghost {
+  position: fixed; z-index: 50; pointer-events: none; margin: 0; opacity: 1; animation: none;
+  will-change: transform; transform: translate3d(0, 0, 0); filter: drop-shadow(0 8px 6px #3b1f5c55);
+}
+.candy-drag-ghost::before, .candy-drag-ghost::after { transform: scale(1.1) rotate(-8deg); }
+.candy-drag-ghost.is-snapping { transition: transform 300ms cubic-bezier(.25,.75,.38,1); }
+.candy-app.is-dragging, .candy-app.is-dragging .candy-packet { cursor: grabbing; }
+.candy-app.is-locked #candyHints { opacity: .55; }
+
+/* Controls */
+.candy-app .candy-controls { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; align-items: stretch; }
+.candy-controls > .candy-button, #candyHints { flex: 1 0 auto; }
+#candyHints .hint-trigger {
+  min-height: 48px; min-width: 48px; width: 100%; padding-inline: 10px; border-radius: 999px;
+  background: linear-gradient(180deg, #ffe066, #fcc419); border: 2px solid #f59f00; color: #5c3b00;
+  font-weight: 800; box-shadow: 0 3px 0 #e67700;
+}
+.candy-feedback { margin: 0; padding: 5px 10px; border-radius: 14px; font-size: .92rem; font-weight: 800;
+  background: #fff4e6; color: #a34700; border: 2px solid #ffc078; }
+#candyAnswerFeedback { background: #f3f0ff; color: var(--candy-ink); border-color: #d0bfff; }
+
+/* Review and summary */
+.candy-review, .candy-summary {
+  border: 3px solid #b2f2bb; border-radius: 20px; padding: 14px 10px; text-align: center;
+  background: radial-gradient(circle, #d3f9d8 1.6px, transparent 2px) 0 0 / 18px 18px, #fff;
+  box-shadow: 0 6px 16px #2f9e4422;
+}
+.candy-review p, .candy-summary p, .candy-summary h2 { margin: 0; }
+.candy-review-text, .candy-skip { font-size: 1.08rem; font-weight: 800; color: #2b8a3e; }
+.candy-review-text::before { content: "🎉 " / ""; }
+.candy-equation {
+  font: 800 clamp(1.7rem, 7.4vw, 2.4rem)/1.2 var(--f-num, system-ui);
+  background: linear-gradient(90deg, #ff4f97, #ff922b 55%, #f59f00);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.candy-verification { color: var(--candy-soft); font-weight: 700; }
+.candy-recall { display: grid; gap: 6px; padding-top: 8px; font-weight: 800; color: var(--candy-ink); }
+.candy-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.candy-choice { font: 800 1.25rem var(--f-num, system-ui); border-radius: 16px; }
+.candy-choice[aria-pressed="true"] {
+  background: linear-gradient(135deg, #9c6cff, #5f3dc4); color: #fff; border-color: #5f3dc4; box-shadow: 0 3px 0 #4527a0;
+}
+.candy-choice.is-answer { border: 3px solid #2f9e44; color: #2b8a3e; background: #ebfbee; opacity: 1; }
+.candy-summary { display: grid; gap: 8px; justify-items: center; }
+.candy-summary h2 { font-size: 1.5rem; color: var(--candy-ink); }
+.candy-summary h2::before { content: "🏆 " / ""; }
+.candy-summary-note { color: var(--candy-soft); }
+
+/* Celebration */
+.candy-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+.candy-confetti i {
+  position: absolute; top: -14px; width: 9px; height: 14px; border-radius: 2px;
+  animation: candy-fall var(--d, 1.8s) cubic-bezier(.2, .6, .4, 1) var(--delay, 0s) forwards;
+}
+.candy-confetti i:nth-child(3n) { width: 11px; height: 11px; border-radius: 50%; }
+@keyframes candy-fall {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to { transform: translate3d(var(--dx, 0px), 105vh, 0) rotate(var(--rot, 540deg)); }
+}
+@keyframes candy-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-2deg); } }
+@keyframes candy-pop { 0% { transform: scale(.55); } 65% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes candy-bump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes candy-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+@media (max-height: 680px) {
+  /* Small phones (360×640): thinner frames keep every control on the first screen. */
+  .candy-app { padding-block: 3px 7px; gap: 3px; }
+  .candy-exercise, .candy-work { gap: 3px; }
+  .candy-board { gap: 2px; padding-block: 3px; border-width: 2px; }
+  .candy-baskets { gap: 2px; }
+  .candy-zone { border-width: 1px; box-shadow: inset 0 0 0 1px var(--bk); }
+  .candy-basket { box-shadow: inset 0 0 0 1px var(--bk), inset 0 -3px 0 #0000000d; }
+  .candy-tray { padding-top: 5px; }
+  .candy-tray::before { height: 5px; }
+  .candy-work .candy-feedback { padding: 3px 6px; }
+}
+@media (max-width: 345px) {
+  .candy-packets { grid-template-columns: repeat(4, minmax(48px, 62px)); }
+  .candy-app .candy-controls > .candy-button { padding-inline: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .candy-drag-ghost.is-snapping { transition-duration: 0ms; }
+  .candy-packet, .candy-tray .candy-packet, .candy-packet.is-new,
+  .candy-zone.is-extreme, .candy-zone.is-bump .candy-count { animation: none; }
+  .candy-packet:hover, .candy-zone.is-over { transform: none; }
+  .candy-confetti { display: none; }
+}
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="practiceApp">
   <header class="top">
     <h1>乘除滾滾球</h1>
     <div class="status">
@@ -203,7 +500,17 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     <p class="meaning" id="meaning">把 12 個平均分成 4 份，每份有多少個？</p>
   </section>
 
-  <div class="board-wrap" id="boardWrap" role="group" aria-label="傾斜木板：把小球滾進正確答案的洞">
+
+  <div class="game-entry">
+  <div class="seg input-modes" role="group" aria-label="作答方式">
+    <button type="button" data-input-mode="tilt" aria-pressed="true">傾斜模式</button>
+    <button type="button" data-input-mode="buttons" aria-pressed="false">按鈕模式</button>
+  </div>
+
+    <button type="button" class="btn" id="modeCandy" aria-controls="candyApp">派糖</button>
+  </div>
+
+  <div class="board-wrap" id="boardWrap" role="group" aria-label="傾斜木板：穩定入洞選取答案，再按確認">
     <div class="board" id="board">
       <div class="surface" id="surface">
         <div class="home" aria-hidden="true"></div>
@@ -216,7 +523,14 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     </div>
   </div>
 
-  <p class="hint">按住木板的一邊，木板就向那邊傾斜，小球會滾過去。小球停在答案的洞上一會兒，就會選擇那個答案。電腦可用方向鍵。</p>
+
+  <div class="answer-grid" id="answerGrid" role="group" aria-label="四個答案" hidden></div>
+  <div class="submit-row">
+    <p id="selectedAnswer" role="status" aria-live="polite">尚未選答案</p>
+    <div id="practiceHints"></div>
+    <button type="button" class="btn primary" id="confirmBtn" disabled>確認答案</button>
+  </div>
+  <p class="hint" id="inputHint"></p>
 
   <div class="controls">
     <div class="seg" role="group" aria-label="題型">
@@ -229,8 +543,10 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
       <button type="button" id="levelHard" data-level="hard" aria-pressed="false">進階 2–9</button>
     </div>
     <div class="row">
+      <div class="row" id="sensorControls">
       <button type="button" class="btn" id="sensorBtn">用手機傾斜</button>
       <button type="button" class="btn" id="calibBtn" hidden>重新置中</button>
+      </div>
       <button type="button" class="btn" id="soundBtn" aria-pressed="true">聲音：開</button>
     </div>
   </div>
@@ -238,15 +554,65 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
   <details class="notes">
     <summary>給組員的試玩說明</summary>
     <ul>
-      <li>玩法：按住木板的一邊，木板就向那邊傾斜；小球滾到答案的洞並停一會兒，就會選擇那個答案。</li>
-      <li>答完會播放動畫：除法是把長方形用線平均分成幾份，看每份有多少個；乘法是一組一組加起來。</li>
-      <li>錯誤答案不是亂選的：例如 12 ÷ 4 的 8、16、48，分別代表做了減法、加法、乘法，答錯時會說明原因。</li>
-      <li>一輪 10 題，完成後會列出最常見的錯誤類型。</li>
-      <li>這是網頁試玩版，用來試遊戲手感和動畫解說。用手機打開時，可按「用手機傾斜」啟用傾斜感應（iPhone 會先問你是否允許）；在電腦上可按住木板或用方向鍵。正式 App 會用 App Inventor 的 OrientationSensor。</li>
-      <li>試玩時請留意：小球快慢合適嗎？動畫看得明白嗎？題目難度合適嗎？</li>
+      <li>傾斜模式：穩定入洞 0.5 秒只作選取；可改選，按「確認答案」才判分。電腦可按住木板或用方向鍵控球。</li>
+      <li>按鈕模式：直接點四個答案其中一個，再按同一個確認鍵；兩種方式使用同一題及同一套計分。</li>
+      <li>除法動畫：同一批物件，準備已知份數的空容器，再逐個輪流平均分；乘法動畫逐組出現並跳數。</li>
+      <li>回饋說明所選數值與算式的關係，不以一次選擇判定學生的思考原因。</li>
+      <li>一輪十題；動畫後可做圖意判斷，答對或答錯都不影響星星分數，未作答不計入圖意判斷分母。</li>
+      <li>這是網頁原型。正式 Android 作品仍須用 MIT App Inventor 製作及真機驗收。</li>
     </ul>
   </details>
 </div>
+
+<main id="candyApp" class="candy-app" hidden aria-labelledby="candyTitle">
+  <header class="candy-top">
+    <button type="button" class="candy-button candy-back" id="candyBack">← 主練習</button>
+    <h1 id="candyTitle">派糖</h1>
+    <div class="candy-tally" aria-live="polite"><span id="candyProgress">第 1／10 題</span><span id="candyScore">★ 0</span></div>
+  </header>
+  <nav class="candy-modes" aria-label="派糖運算">
+    <button type="button" class="candy-button" id="candyDiv" aria-pressed="true">除法</button>
+    <button type="button" class="candy-button" id="candyMul" aria-pressed="false">乘法</button>
+  </nav>
+  <section id="candyExercise" class="candy-exercise" aria-labelledby="candyPrompt">
+    <h2 id="candyPrompt" class="candy-prompt"></h2>
+    <div id="candyWork" class="candy-work">
+      <p id="candyGuide" class="candy-guide">把糖包拖到籃內，放好全部糖包後按「完成」。</p>
+      <p id="candyFeedback" class="candy-feedback" role="status" hidden></p>
+      <div id="candyBoard" class="candy-board" aria-label="糖包與籃">
+        <div id="candyTray" class="candy-zone candy-tray" data-candy-zone="tray"></div>
+        <div id="candyBaskets" class="candy-baskets"></div>
+      </div>
+    </div>
+    <div id="candyReview" class="candy-review" hidden>
+      <p id="candyReviewText" class="candy-review-text"></p>
+      <p id="candyFirstSuccess" class="candy-skip" hidden>一次成功</p>
+      <p id="candySkip" class="candy-skip" hidden></p>
+      <p id="candyEquation" class="candy-equation" tabindex="-1"></p>
+      <p id="candyVerification" class="candy-verification" hidden></p>
+      <div id="candyRecall" class="candy-recall" hidden>
+        <p id="candyRecallPrompt">每籃有多少粒？</p>
+        <div id="candyOptions" class="candy-options" role="group" aria-labelledby="candyRecallPrompt"></div>
+        <p id="candyAnswerFeedback" class="candy-feedback" role="status" hidden></p>
+      </div>
+    </div>
+    <div class="candy-controls" aria-label="派糖操作">
+      <button type="button" class="candy-button" id="candyUndo" disabled>返回上一步</button>
+      <button type="button" class="candy-button" id="candyRestart" disabled>重新開始</button>
+      <button type="button" class="candy-button candy-primary" id="candyFinish" disabled>完成</button>
+      <button type="button" class="candy-button candy-primary" id="candyConfirm" disabled hidden>確認</button>
+      <button type="button" class="candy-button candy-primary" id="candyNext" hidden>下一題</button>
+      <div id="candyHints"></div>
+    </div>
+  </section>
+  <section id="candySummary" class="candy-summary" hidden aria-labelledby="candySummaryTitle">
+    <h2 id="candySummaryTitle">完成十題！</h2>
+    <p id="candySummaryScore" class="candy-equation"></p>
+    <p id="candySummaryHints"></p>
+    <p class="candy-summary-note">每題成功分配糖包可得一顆星；除法還要答對四選一。第一次按「完成」就成功分配，會顯示「一次成功」。</p>
+    <button type="button" class="candy-button candy-primary" id="candyReplay">再玩一輪</button>
+  </section>
+</main>
 
 <div class="overlay" id="sheet" hidden>
   <div class="scrim"></div>
@@ -257,6 +623,12 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     <p class="step" id="vizStep" aria-live="polite"></p>
     <div class="eq" id="vizEq"></div>
     <p class="check" id="vizCheck"></p>
+    <section class="concept" id="conceptQuestion" aria-labelledby="conceptPrompt" hidden>
+      <h3 id="conceptPrompt"></h3>
+      <div class="row" id="conceptChoices"></div>
+      <p id="conceptFeedback" role="status" aria-live="polite"></p>
+      <p class="concept-note">這條圖意判斷不影響星星分數。</p>
+    </section>
     <div class="row end">
       <button type="button" class="btn" id="replayBtn">再看一次動畫</button>
       <button type="button" class="btn primary" id="nextBtn">下一題</button>
@@ -269,11 +641,22 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
   <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sumTitle">
     <h2 id="sumTitle">完成這一輪！</h2>
     <p class="sum-score" id="sumScore"></p>
+    <p id="sumConcept"></p>
+    <p id="sumHints"></p>
     <ul class="sum-list" id="sumList"></ul>
     <p class="why" id="sumTip"></p>
     <div class="row end"><button type="button" class="btn primary" id="againBtn">再玩一輪</button></div>
   </div>
 </div>
+
+<dialog id="hintOverlay" aria-labelledby="hintTitle">
+  <h2 id="hintTitle">提示</h2>
+  <div id="hintBody"></div>
+  <div class="row">
+    <button type="button" class="btn" id="hintClose" autofocus>返回題目</button>
+    <button type="button" class="btn primary" id="hintNext">下一級提示</button>
+  </div>
+</dialog>
 
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -283,7 +666,7 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
   const $ = (s) => document.querySelector(s);
   const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const ROUND = 10;
-  const S = { mode: 'div', level: 'easy', qi: 0, score: 0, errors: {}, q: null, locked: true, falling: false, sound: true, seen: new Set() };
+  const S = { mode: 'div', level: 'easy', inputMode: 'tilt', selectedOptionId: null, submitted: false, qi: 0, score: 0, errors: {}, q: null, locked: true, falling: false, sound: true, seen: new Set(), conceptCorrect: 0, conceptTotal: 0, conceptAnswered: false, vizComplete: false };
 
   /* ---------- small helpers ---------- */
   const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -300,107 +683,423 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     toastTimer = setTimeout(() => { t.hidden = true; }, ms || 3000);
   }
 
-  /* ---------- questions: every wrong option comes from a typical mistake ---------- */
-  const TAGS = {
-    'div-minus': { label: '把除法當成減法', tip: '除法的意思是「平均分」：先看要分成幾份，每一份要一樣多。' },
-    'div-plus': { label: '把除法當成加法', tip: '除法的意思是「平均分」：先看要分成幾份，每一份要一樣多。' },
-    'div-times': { label: '把除法當成乘法', tip: '先看清楚符號：「÷」是平均分，「×」是幾組合起來。' },
-    'mul-plus': { label: '把乘法當成加法', tip: '乘法是「幾組，每組幾個」：4 × 3 是 4 組，每組 3 個。' },
-    'mul-table': { label: '多算或少算了一組', tip: '一組一組數，例如 3、6、9、12，數完再對答案。' },
-    'mul-concat': { label: '把兩個數字拼在一起', tip: '乘法要計算一共有多少個，不是把數字拼起來。' },
-    'near': { label: '數錯了一點點', tip: '慢慢數，每一份都要數清楚。' }
+/* Pure question generation. This fragment is embedded in index.html. */
+function createSeededQuestionRng(seed = 20261031) {
+  let state = Number(seed) >>> 0;
+  return function seededQuestionRandom() {
+    state = (state + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
 
-  function pickOptions(ans, cands) {
-    const out = [{ v: ans, tag: 'ok' }];
-    const used = new Set([ans]);
-    for (const [v, tag] of cands) {
-      if (out.length === 4) break;
-      if (!Number.isInteger(v) || v <= 0 || used.has(v)) continue;
-      used.add(v); out.push({ v, tag });
+function questionRandomInt(lo, hi, rng) {
+  const u = rng();
+  if (!Number.isFinite(u) || u < 0 || u >= 1) {
+    throw new RangeError('Question RNG must return a number in [0, 1).');
+  }
+  return lo + Math.floor(u * (hi - lo + 1));
+}
+
+function shuffleQuestionOptions(items, rng) {
+  const shuffled = items.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = questionRandomInt(0, i, rng);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function questionMidpointCandidates(values) {
+  return values.filter((value, index) => values.some((left, i) => i !== index &&
+    values.some((right, j) => j > i && j !== index && left + right === 2 * value)));
+}
+
+function questionDensityCandidates(values, distance) {
+  const counts = values.map(value => values.filter(other => other !== value && Math.abs(other - value) <= distance).length);
+  const maximum = Math.max(...counts);
+  return { candidates: values.filter((_, index) => counts[index] === maximum), covered: maximum > 0 };
+}
+
+const QUESTION_DENSITY_TIE_PERCENT = 20;
+// Layout enumeration is finite, cached, and independent of the random stream.
+// Constant RNGs therefore cannot trap generation in a rejection loop.
+const questionLayoutCache = new Map();
+function questionOptionLayouts(answer, meaningful, forbidden) {
+  const key = JSON.stringify([answer, meaningful, forbidden]);
+  if (questionLayoutCache.has(key)) return questionLayoutCache.get(key);
+  const byValue = new Map();
+  function add(option) {
+    if (Number.isInteger(option.v) && option.v > 0 && option.v !== answer &&
+        !forbidden.includes(option.v) && !byValue.has(option.v)) byValue.set(option.v, option);
+  }
+  meaningful.forEach(add);
+  // Wider neighbours make asymmetric, positive layouts possible near 2 and 3.
+  for (let distance = 1; distance <= 8; distance++) {
+    add({ v: answer - distance, tag: 'near' });
+    add({ v: answer + distance, tag: 'near' });
+  }
+  const pool = [...byValue.values()];
+  const ranks = Array.from({ length: 4 }, () => ({ asymmetric: [], denseTie: [], scores: {} }));
+  function keep(rank, type, options) {
+    const group = ranks[rank - 1];
+    const midpointCount = questionMidpointCandidates([answer, ...options.map(option => option.v)]).length;
+    // Meaningful mistakes take priority. Among equally meaningful layouts,
+    // avoid leaving obvious distractor midpoints as a reverse exclusion cue.
+    // Immediate neighbours then take priority over wider fillers.
+    const score = [options.filter(option => option.tag !== 'near').length,
+      -midpointCount,
+      options.filter(option => option.tag === 'near' && Math.abs(option.v - answer) <= 2).length];
+    const best = group.scores[type];
+    const comparison = best ? score.findIndex((part, index) => part !== best[index]) : -1;
+    if (!best || (comparison >= 0 && score[comparison] > best[comparison])) {
+      group[type] = []; group.scores[type] = score;
     }
-    for (let k = 1; out.length < 4 && k < 60; k++) {
-      for (const v of [ans + k, ans - k]) {
-        if (out.length < 4 && v > 0 && !used.has(v)) { used.add(v); out.push({ v, tag: 'near' }); }
+    if (score.every((part, index) => part === group.scores[type][index])) group[type].push(options);
+  }
+  for (let i = 0; i < pool.length - 2; i++) {
+    for (let j = i + 1; j < pool.length - 1; j++) {
+      for (let k = j + 1; k < pool.length; k++) {
+        const options = [pool[i], pool[j], pool[k]];
+        const values = [answer, ...options.map(option => option.v)];
+        const rank = 1 + options.filter(option => option.v < answer).length;
+        // Every feasible rank has a layout without an answer-centred pair.
+        if (questionMidpointCandidates(values).includes(answer)) continue;
+        const dense = questionDensityCandidates(values, 2).candidates;
+        const densityWeight = dense.includes(answer) ? 1 / dense.length : 0;
+        // c=3/rank3 necessarily contains 1 and 2. Without an answer midpoint,
+        // upper>=6 and the answer ties with 1 and 2: an unavoidable 1/3.
+        const asymmetricLimit = answer === 3 && rank === 3 ? 1 / 3 : 1 / 4;
+        if (densityWeight <= asymmetricLimit) keep(rank, 'asymmetric', options);
+        // Retain a separate tied-density bucket so "exclude the densest"
+        // does not become a reliable replacement for choosing the densest.
+        if (densityWeight > 1 / 4 && densityWeight <= 1 / 2) keep(rank, 'denseTie', options);
       }
     }
-    return shuffle(out);
   }
+  const feasible = [1, 2, 3, 4].filter(rank => answer >= rank);
+  for (const rank of feasible) {
+    if (!ranks[rank - 1].asymmetric.length) throw new Error('No legal asymmetric layout at feasible rank ' + rank);
+  }
+  questionLayoutCache.set(key, ranks);
+  return ranks;
+}
+
+function rankedQuestionOptions(answer, meaningful, forbidden, rng) {
+  // Select a feasible rank BEFORE selecting any distractors. At answer 2 only
+  // ranks 1 and 2 exist; at answer 3 only ranks 1 through 3 exist.
+  const feasibleRanks = [1, 2, 3, 4].filter(rank => answer >= rank);
+  const targetRank = feasibleRanks[questionRandomInt(0, feasibleRanks.length - 1, rng)];
+  const layouts = questionOptionLayouts(answer, meaningful, forbidden)[targetRank - 1];
+  const useDensityTie = questionRandomInt(0, 99, rng) < QUESTION_DENSITY_TIE_PERCENT && layouts.denseTie.length > 0;
+  const candidates = useDensityTie ? layouts.denseTie : layouts.asymmetric;
+  const chosen = [{ v: answer, tag: 'ok' }, ...candidates[questionRandomInt(0, candidates.length - 1, rng)]];
+  return {
+    opts: shuffleQuestionOptions(chosen, rng).map((option, index) => ({
+      id: 'option-' + index, v: option.v, tag: option.tag
+    })),
+    answerRank: targetRank
+  };
+}
+
+function questionFacts(op, factor1, factor2) {
+  if (op !== 'div' && op !== 'mul') throw new RangeError('Unsupported operation: ' + op);
+  if (![factor1, factor2].every(value => Number.isInteger(value) && value >= 2 && value <= 9)) {
+    throw new RangeError('Both factors must be integers from 2 to 9.');
+  }
+
+  let a, b, c, meaningful, forbidden;
+  if (op === 'div') {
+    b = factor1; c = factor2; a = b * c;
+    meaningful = [{ v: a - b, tag: 'div-minus' }, { v: b, tag: 'div-parts' }];
+    forbidden = [a * b];
+  } else {
+    a = factor1; b = factor2; c = a * b;
+    meaningful = [
+      { v: a + b, tag: 'mul-plus' },
+      { v: (a - 1) * b, tag: 'mul-less' },
+      { v: (a + 1) * b, tag: 'mul-more' }
+    ];
+    forbidden = [Number(String(a) + String(b))];
+  }
+  return { a, b, c, meaningful, forbidden };
+}
+
+function createQuestion(op, factor1, factor2, { first = false, rng = Math.random } = {}) {
+  if (first) { factor1 = 4; factor2 = 3; }
+  const { a, b, c, meaningful, forbidden } = questionFacts(op, factor1, factor2);
+  if (typeof rng !== 'function') throw new TypeError('rng must be a function.');
+  if (first && op === 'div') {
+    // Keep the fixed opening demonstration; it is not a random layout.
+    const fixed = [
+      { v: 1, tag: 'near' }, { v: 3, tag: 'ok' },
+      { v: 4, tag: 'div-parts' }, { v: 8, tag: 'div-minus' }
+    ];
+    return { op, a, b, c, answerRank: 2,
+      opts: shuffleQuestionOptions(fixed, rng).map((option, index) => ({
+        id: 'option-' + index, v: option.v, tag: option.tag
+      }))
+    };
+  }
+  return { op, a, b, c, ...rankedQuestionOptions(c, meaningful, forbidden, rng) };
+}
+
+function questionStrategySelections(values) {
+  const midpoint = questionMidpointCandidates(values);
+  const dense = questionDensityCandidates(values, 2);
+  const unit = questionDensityCandidates(values, 1);
+  const bothSides = values.filter(value => values.includes(value - 1) && values.includes(value + 1));
+  const nearest = values.map(value => Math.min(...values.filter(other => other !== value).map(other => Math.abs(other - value))));
+  const sorted = values.slice().sort((a, b) => a - b);
+  return {
+    midpoint: { candidates: midpoint, covered: midpoint.length > 0 },
+    densestNeighbour: dense,
+    reverseDensity: { candidates: values.filter(value => !dense.candidates.includes(value)), covered: dense.candidates.length < values.length },
+    plusMinusOne: { candidates: bothSides, covered: bothSides.length > 0 },
+    unitNeighbour: unit,
+    closestDistance: { candidates: values.filter((_, index) => nearest[index] === Math.min(...nearest)), covered: true },
+    reverseMidpoint: { candidates: values.filter(value => !midpoint.includes(value)), covered: midpoint.length > 0 },
+    smallest: { candidates: [sorted[0]], covered: true },
+    secondSmallest: { candidates: [sorted[1]], covered: true },
+    secondLargest: { candidates: [sorted[2]], covered: true },
+    largest: { candidates: [sorted[3]], covered: true }
+  };
+}
+
+function runOptionDistributionTest({ iterations = 200, seed = 20261031 } = {}) {
+  if (!Number.isInteger(iterations) || iterations < 1) throw new RangeError('iterations must be positive.');
+  const rng = createSeededQuestionRng(seed);
+  const rows = [], failures = [];
+  let generated = 0, failureCount = 0;
+  function percent(part, total) { return total ? Number((100 * part / total).toFixed(4)) : null; }
+  for (const op of ['div', 'mul']) {
+    for (const [level, max] of [['easy', 5], ['hard', 9]]) {
+      const rankCounts = [0, 0, 0, 0], strategyTotals = {};
+      let samples = 0, symmetricAnswerCount = 0;
+      for (let factor1 = 2; factor1 <= max; factor1++) {
+        for (let factor2 = 2; factor2 <= max; factor2++) {
+          for (let repeat = 0; repeat < iterations; repeat++) {
+            const q = createQuestion(op, factor1, factor2, { rng });
+            const values = q.opts.map(option => option.v);
+            const rank = 1 + values.filter(value => value < q.c).length;
+            const valid = values.length === 4 && new Set(values).size === 4 &&
+              values.every(value => Number.isInteger(value) && value > 0) &&
+              q.opts.filter(option => option.v === q.c && option.tag === 'ok').length === 1 &&
+              q.opts.every(option => (option.tag === 'ok') === (option.v === q.c)) &&
+              new Set(q.opts.map(option => option.id)).size === 4 && rank === q.answerRank &&
+              (op === 'div' ? q.a / q.b === q.c && !values.includes(q.a * q.b) :
+                q.a * q.b === q.c && !values.includes(Number(String(q.a) + String(q.b))));
+            if (!valid) {
+              failureCount++;
+              if (failures.length < 20) failures.push({ op, level, factor1, factor2, repeat, q });
+            }
+            for (const [name, selection] of Object.entries(questionStrategySelections(values))) {
+              if (!strategyTotals[name]) strategyTotals[name] = { expectedCorrect: 0, coveredSamples: 0,
+                coveredExpectedCorrect: 0, uniqueSelections: 0, uniqueCorrect: 0 };
+              const totals = strategyTotals[name];
+              const candidates = selection.covered && selection.candidates.length ? selection.candidates : values;
+              const score = candidates.includes(q.c) ? 1 / candidates.length : 0;
+              totals.expectedCorrect += score;
+              if (selection.covered) {
+                totals.coveredSamples++;
+                totals.coveredExpectedCorrect += score;
+                if (candidates.length === 1) {
+                  totals.uniqueSelections++;
+                  if (candidates[0] === q.c) totals.uniqueCorrect++;
+                }
+              }
+            }
+            if (questionMidpointCandidates(values).includes(q.c)) symmetricAnswerCount++;
+            rankCounts[rank - 1]++; samples++; generated++;
+          }
+        }
+      }
+      const strategies = {};
+      for (const [name, totals] of Object.entries(strategyTotals)) {
+        strategies[name] = { ...totals, accuracyPercent: percent(totals.expectedCorrect, samples),
+          coveragePercent: percent(totals.coveredSamples, samples),
+          conditionalAccuracyPercent: percent(totals.coveredExpectedCorrect, totals.coveredSamples),
+          uniqueSelectionPercent: percent(totals.uniqueSelections, samples),
+          uniqueHitAccuracyPercent: percent(totals.uniqueCorrect, totals.uniqueSelections) };
+      }
+      const rankPercent = rankCounts.map(count => percent(count, samples));
+      const rankPass = rankCounts.every(count => count > 0 && count / samples <= 0.4);
+      const symmetryPass = symmetricAnswerCount === 0;
+      const midpointPass = strategyTotals.midpoint.expectedCorrect / samples <= 0.30;
+      const densityPass = strategyTotals.densestNeighbour.expectedCorrect / samples <= 0.30;
+      const reverseDensityPass = strategyTotals.reverseDensity.expectedCorrect / samples <= 0.30;
+      const reverseMidpointPass = strategyTotals.reverseMidpoint.expectedCorrect / samples <= 0.30;
+      rows.push({ op, level, factorPairs: (max - 1) ** 2, iterationsPerPair: iterations, samples,
+        rankCounts, rankPercent, symmetricAnswerCount, symmetricAnswerPercent: percent(symmetricAnswerCount, samples),
+        strategies, rankPass, symmetryPass, midpointPass, densityPass, reverseDensityPass, reverseMidpointPass,
+        pass: rankPass && symmetryPass && midpointPass && densityPass && reverseDensityPass && reverseMidpointPass });
+    }
+  }
+  const boundaryInputs = [['mul', 2, 2], ['mul', 3, 3], ['div', 2, 2], ['div', 4, 3]];
+  const boundaries = boundaryInputs.map(([op, f1, f2]) => {
+    const q = createQuestion(op, f1, f2, { rng });
+    return { expression: `${q.a} ${op === 'div' ? '\u00f7' : '\u00d7'} ${q.b}`, q };
+  });
+  const firstDivision = createQuestion('div', 2, 2, { first: true, rng });
+  const firstMultiplication = createQuestion('mul', 2, 2, { first: true, rng });
+  const firstQuestionPass = firstDivision.a === 12 && firstDivision.b === 4 && firstDivision.c === 3 &&
+    firstDivision.opts.map(option => option.v).sort((x, y) => x - y).join(',') === '1,3,4,8' &&
+    firstMultiplication.a === 4 && firstMultiplication.b === 3 && firstMultiplication.c === 12;
+  return {
+    seed, generated, rows,
+    strategyDefinitions: {
+      scoring: 'Choose uniformly among tied candidates; if there is no covered match, choose uniformly among all four. Accuracies are expected scores, not a random tie-break simulation.',
+      midpoint: 'Candidate v equals the average of two distinct other option values.',
+      densestNeighbour: 'Candidates maximise the number of other option values at absolute distance <=2. Coverage requires at least one such neighbour.',
+      reverseDensity: 'Exclude all densest-neighbour maxima and choose uniformly among the remaining values; if all four tie, use uniform fallback. Extra sanity check, not a guarantee against other shortcuts.',
+      plusMinusOne: 'Candidates have BOTH v-1 and v+1 present. This is a narrow midpoint strategy.',
+      unitNeighbour: 'Candidates maximise the number of other option values at absolute distance 1. Coverage requires at least one adjacent pair.',
+      closestDistance: 'For each option find its nearest other value; candidates minimise that distance (members of globally closest pairs).',
+      reverseMidpoint: 'When any midpoint exists, choose uniformly among non-midpoint values; otherwise use uniform fallback. Extra sanity check.',
+      rankStrategies: 'Smallest, second-smallest, second-largest, and largest always select that numeric rank.',
+      scope: 'Random questions only; fixed onboarding 12\u00f74 is tested separately. These selected heuristics do not establish that all shortcuts are absent.'
+    },
+    invariants: { checked: generated, failureCount, failures }, boundaries,
+    firstQuestions: { pass: firstQuestionPass, division: firstDivision, multiplication: firstMultiplication },
+    pass: failureCount === 0 && firstQuestionPass && rows.every(row => row.pass)
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { createQuestion, createSeededQuestionRng, runOptionDistributionTest,
+    questionFacts, questionOptionLayouts, QUESTION_DENSITY_TIE_PERCENT };
+}
+  /* Neutral descriptions describe selected values, not a child's reasoning. */
+  const TAGS = {
+    'div-minus': { label: '與減法結果相同的答案', tip: '可重溫「已知份數，找每份個數」的平均分。' },
+    'div-parts': { label: '與份數相同的答案', tip: '分清題目已知的份數，以及要找的每份個數。' },
+    'mul-plus': { label: '與加法結果相同的答案', tip: '可重溫組數與每組個數，以及一共有多少個。' },
+    'mul-less': { label: '與少一組算式結果相同的答案', tip: '可用逐組點算，核對題目要求的組數。' },
+    'mul-more': { label: '與多一組算式結果相同的答案', tip: '可用逐組點算，核對題目要求的組數。' },
+    'near': { label: '鄰近答案', tip: '可再用圖像或逐組點算核對總數。' }
+  };
 
   function makeQ() {
     const op = S.mode === 'mix' ? (Math.random() < 0.5 ? 'div' : 'mul') : S.mode;
-    let b = 4, c = 3; // first question is always the 12 ÷ 4 / 4 × 3 example
-    if (S.qi > 0) {
-      let tries = 0;
-      do { b = rnd(2, maxF()); c = rnd(2, maxF()); tries++; } while (S.seen.has(op + ':' + b + ':' + c) && tries < 40);
+    if (S.qi === 0) {
+      S.seen.add(op + ':4:3');
+      return createQuestion(op, 4, 3, { first: true });
     }
-    S.seen.add(op + ':' + b + ':' + c);
-    if (op === 'div') {
-      const a = b * c; // a shared equally into b parts gives c in each part
-      return { op, a, b, c, opts: pickOptions(c, [[a - b, 'div-minus'], [a + b, 'div-plus'], [a * b, 'div-times'], [c + 1, 'near'], [c - 1, 'near']]) };
+    const remaining = [];
+    for (let f1 = 2; f1 <= maxF(); f1++) {
+      for (let f2 = 2; f2 <= maxF(); f2++) {
+        if (!S.seen.has(op + ':' + f1 + ':' + f2)) remaining.push([f1, f2]);
+      }
     }
-    const g = b, p = c, prod = g * p; // g groups with p in each group
-    const table = Math.random() < 0.5 ? prod + p : prod - p;
-    return { op, a: g, b: p, c: prod, opts: pickOptions(prod, [[g + p, 'mul-plus'], [table, 'mul-table'], [Number(String(g) + String(p)), 'mul-concat'], [prod + 1, 'near'], [prod - 1, 'near']]) };
+    if (!remaining.length) throw new Error('本輪沒有未使用的題目。');
+    const factors = remaining[rnd(0, remaining.length - 1)];
+    S.seen.add(op + ':' + factors[0] + ':' + factors[1]);
+    return createQuestion(op, factors[0], factors[1]);
   }
 
   function whyText(q, opt) {
     const a = q.a, b = q.b, c = q.c, v = opt.v;
-    if (opt.tag === 'ok') {
-      return q.op === 'div' ? `把 ${a} 個平均分成 ${b} 份，每份 ${c} 個。` : `${a} 組，每組 ${b} 個，一共 ${c} 個。`;
-    }
+    const meaning = q.op === 'div'
+      ? '今題把 ' + a + ' 個物件平均分成 ' + b + ' 份，每份有 ' + c + ' 個。'
+      : '今題有 ' + a + ' 組，每組 ' + b + ' 個，一共有 ' + c + ' 個。';
+    if (opt.tag === 'ok') return meaning;
+    let relation = '';
     switch (opt.tag) {
-      case 'div-minus': return `你選了 ${v}，可能是做了減法：${a} − ${b} = ${v}。除法是把 ${a} 個平均分成 ${b} 份。`;
-      case 'div-plus': return `你選了 ${v}，可能是做了加法：${a} + ${b} = ${v}。除法是把 ${a} 個平均分成 ${b} 份。`;
-      case 'div-times': return `你選了 ${v}，可能是做了乘法：${a} × ${b} = ${v}。看清楚，題目是除號「÷」。`;
-      case 'mul-plus': return `你選了 ${v}，可能是做了加法：${a} + ${b} = ${v}。乘法是 ${a} 組，每組 ${b} 個。`;
-      case 'mul-table': return v > c ? `你選了 ${v}，多算了一組：${a + 1} × ${b} = ${v}。` : `你選了 ${v}，少算了一組：${a - 1} × ${b} = ${v}。`;
-      case 'mul-concat': return `你選了 ${v}，這是把 ${a} 和 ${b} 拼在一起，不是相乘。`;
-      default: return q.op === 'div' ? `你選了 ${v}，差一點！再數一數每一份有多少個。` : `你選了 ${v}，差一點！再數一數一共有多少個。`;
+      case 'div-minus': relation = v + ' 是 ' + a + ' − ' + b + ' 的結果。'; break;
+      case 'div-parts': relation = b + ' 是已知的份數，題目要找的是每份個數。'; break;
+      case 'mul-plus': relation = v + ' 是 ' + a + ' + ' + b + ' 的結果。'; break;
+      case 'mul-less': relation = v + ' 是 ' + (a - 1) + ' × ' + b + ' 的結果。'; break;
+      case 'mul-more': relation = v + ' 是 ' + (a + 1) + ' × ' + b + ' 的結果。'; break;
+      default: relation = v + ' 是鄰近答案。';
     }
+    return '你選了 ' + v + '。' + relation + meaning;
   }
 
-  /* ---------- board and question display ---------- */
+  /* ---------- shared question display and two input modes ---------- */
   const holes = Array.from(document.querySelectorAll('.hole'));
   const HOLE = holes.map((h) => ({ x: Number(h.dataset.sx) * 0.76, y: Number(h.dataset.sy) * 0.76 }));
   const plates = holes.map((h) => h.querySelector('.plate'));
   const rings = holes.map((h) => h.querySelector('.ring circle'));
   const surface = $('#surface'), board = $('#board'), ballEl = $('#ball'), wrap = $('#boardWrap');
+  const answerGrid = $('#answerGrid');
 
   function updateStatus() {
-    $('#qCount').textContent = `第 ${Math.min(S.qi + 1, ROUND)}／${ROUND} 題`;
-    $('#score').textContent = `★ ${S.score}`;
+    $('#qCount').textContent = '第 ' + Math.min(S.qi + 1, ROUND) + '／' + ROUND + ' 題';
+    $('#score').textContent = '★ ' + S.score;
+  }
+  function updateSelection() {
+    const selected = S.q && S.q.opts.find((o) => o.id === S.selectedOptionId);
+    $('#selectedAnswer').textContent = selected ? '已選答案：' + selected.v : '尚未選答案';
+    holes.forEach((h, i) => h.classList.toggle('is-selected', !!selected && S.q.opts[i].id === selected.id));
+    answerGrid.querySelectorAll('[data-option-id]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(!!selected && b.dataset.optionId === selected.id));
+      b.disabled = S.locked || S.submitted;
+    });
+    $('#confirmBtn').disabled = !selected || S.locked || S.submitted;
+  }
+  function renderInputMode() {
+    const buttons = S.inputMode === 'buttons';
+    wrap.hidden = buttons;
+    answerGrid.hidden = !buttons;
+    $('#sensorControls').hidden = buttons;
+    $('#inputHint').textContent = buttons
+      ? '點選一個答案，可改選；按「確認答案」才提交。'
+      : '傾斜手機，或按住木板／用方向鍵控球。入洞停定 0.5 秒選取，再按「確認答案」。';
+    document.querySelectorAll('[data-input-mode]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.inputMode === S.inputMode));
+      b.disabled = S.locked || S.submitted;
+    });
+    updateSelection();
   }
   function renderQuestion() {
     const q = S.q, expr = $('#expr');
-    expr.textContent = `${q.a} ${q.op === 'div' ? '÷' : '×'} ${q.b} = `;
+    expr.textContent = q.a + (q.op === 'div' ? ' ÷ ' : ' × ') + q.b + ' = ';
     const qm = document.createElement('span'); qm.className = 'q'; qm.textContent = '?';
     expr.append(qm);
     $('#meaning').textContent = q.op === 'div'
-      ? `把 ${q.a} 個平均分成 ${q.b} 份，每份有多少個？`
-      : `${q.a} 組，每組 ${q.b} 個，一共有多少個？`;
-    holes.forEach((h, i) => { h.classList.remove('is-good', 'is-bad', 'is-answer'); plates[i].textContent = String(q.opts[i].v); });
-    updateStatus();
+      ? '把 ' + q.a + ' 個平均分成 ' + q.b + ' 份，每份有多少個？'
+      : q.a + ' 組，每組 ' + q.b + ' 個，一共有多少個？';
+    holes.forEach((h, i) => {
+      h.classList.remove('is-good', 'is-bad', 'is-answer', 'is-selected');
+      h.dataset.optionId = q.opts[i].id;
+      plates[i].textContent = String(q.opts[i].v);
+    });
+    answerGrid.textContent = '';
+    q.opts.forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'answer-btn';
+      b.dataset.optionId = o.id; b.textContent = String(o.v);
+      b.setAttribute('aria-label', '選擇答案 ' + o.v);
+      b.setAttribute('aria-pressed', 'false');
+      answerGrid.append(b);
+    });
+    updateStatus(); renderInputMode();
   }
 
-  /* ---------- physics: tilt pushes the ball; resting on a hole selects it ---------- */
-  const BALL_R = 0.1, CAPTURE = 0.22, MAGNET = 0.3, DWELL = 0.5, ACC = 2.4, FRICTION = 1.7, VMAX = 2.2, BOUNCE = 0.45;
+  /* Motion uses bounded integration; dwell uses actual elapsed timestamps. */
+  const BALL_R = 0.1, CAPTURE = 0.22, MAGNET = 0.3, DWELL = 0.5;
+  const ACC = 2.4, FRICTION = 1.7, VMAX = 2.2, BOUNCE = 0.45, SELECT_SPEED = 0.45;
   const RING_LEN = 289.03;
-  const P = { x: 0, y: 0, vx: 0, vy: 0, dwell: [0, 0, 0, 0] };
+  const P = { x: 0, y: 0, vx: 0, vy: 0, dwell: [0, 0, 0, 0], captureIndex: -1, captureSince: null };
   const tilt = { x: 0, y: 0 };
   const keys = new Set();
-  let pointerTilt = null, pointerId = null;
-  const sensor = { on: false, got: false, b: 0, g: 0, b0: 0, g0: 0 };
-
-  function resetBall() { P.x = 0; P.y = 0; P.vx = 0; P.vy = 0; P.dwell = [0, 0, 0, 0]; S.falling = false; }
-
+  let pointerTilt = null, pointerId = null, qaPaused = false;
+  const sensor = { on: false, got: false, b: 0, g: 0, b0: 0, g0: 0, pending: false, generation: 0 };
+  function clearDwell() { P.dwell.fill(0); P.captureIndex = -1; P.captureSince = null; }
+  function resetBall() {
+    P.x = 0; P.y = 0; P.vx = 0; P.vy = 0; clearDwell();
+    tilt.x = 0; tilt.y = 0; pointerTilt = null; pointerId = null; keys.clear(); S.falling = false;
+  }
   function sensorTilt() {
     const gx = (sensor.g - sensor.g0) / 20, by = (sensor.b - sensor.b0) / 20;
     const raw = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
     const ang = ((raw % 360) + 360) % 360;
     let x = gx, y = by;
-    if (ang === 90) { x = by; y = -gx; } else if (ang === 180) { x = -gx; y = -by; } else if (ang === 270) { x = -by; y = gx; }
-    const dz = (v) => (Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)));
+    if (ang === 90) { x = by; y = -gx; }
+    else if (ang === 180) { x = -gx; y = -by; }
+    else if (ang === 270) { x = -by; y = gx; }
+    const dz = (v) => Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v));
     return { x: dz(x), y: dz(y) };
   }
   function targetTilt() {
@@ -411,50 +1110,54 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
       const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
       return { x, y };
     }
-    if (sensor.on && sensor.got) return sensorTilt();
-    return { x: 0, y: 0 };
+    return sensor.on && sensor.got ? sensorTilt() : { x: 0, y: 0 };
   }
-
-  function physics(dt) {
+  function physics(dt, now = performance.now()) {
+    if (practiceUnavailable() || S.locked || S.submitted || S.inputMode !== 'tilt') return;
     P.vx += tilt.x * ACC * dt; P.vy += tilt.y * ACC * dt;
-    let pick = -1;
     for (let i = 0; i < 4; i++) {
-      const dx = HOLE[i].x - P.x, dy = HOLE[i].y - P.y, d = Math.hypot(dx, dy);
-      if (d < MAGNET) { P.vx += dx * 7 * dt; P.vy += dy * 7 * dt; }
-      if (d < CAPTURE) { P.dwell[i] += dt; if (P.dwell[i] >= DWELL) pick = i; }
-      else P.dwell[i] = Math.max(0, P.dwell[i] - dt * 2.5);
+      const dx = HOLE[i].x - P.x, dy = HOLE[i].y - P.y;
+      if (Math.hypot(dx, dy) < MAGNET) { P.vx += dx * 7 * dt; P.vy += dy * 7 * dt; }
     }
     const damp = Math.exp(-FRICTION * dt); P.vx *= damp; P.vy *= damp;
-    const sp = Math.hypot(P.vx, P.vy); if (sp > VMAX) { P.vx *= VMAX / sp; P.vy *= VMAX / sp; }
+    const sp = Math.hypot(P.vx, P.vy);
+    if (sp > VMAX) { P.vx *= VMAX / sp; P.vy *= VMAX / sp; }
     P.x += P.vx * dt; P.y += P.vy * dt;
     const L = 1 - BALL_R;
-    if (P.x > L) { P.x = L; P.vx = -P.vx * BOUNCE; } else if (P.x < -L) { P.x = -L; P.vx = -P.vx * BOUNCE; }
-    if (P.y > L) { P.y = L; P.vy = -P.vy * BOUNCE; } else if (P.y < -L) { P.y = -L; P.vy = -P.vy * BOUNCE; }
-    if (pick >= 0) choose(pick);
+    if (P.x > L) { P.x = L; P.vx = -P.vx * BOUNCE; }
+    else if (P.x < -L) { P.x = -L; P.vx = -P.vx * BOUNCE; }
+    if (P.y > L) { P.y = L; P.vy = -P.vy * BOUNCE; }
+    else if (P.y < -L) { P.y = -L; P.vy = -P.vy * BOUNCE; }
+    const capture = Math.hypot(P.vx, P.vy) <= SELECT_SPEED
+      ? HOLE.findIndex((h) => Math.hypot(h.x - P.x, h.y - P.y) < CAPTURE) : -1;
+    if (capture < 0) { clearDwell(); return; }
+    if (capture !== P.captureIndex) {
+      clearDwell(); P.captureIndex = capture; P.captureSince = now;
+    }
+    P.dwell[capture] = Math.max(0, (now - P.captureSince) / 1000);
+    if (P.dwell[capture] >= DWELL) selectOption(S.q.opts[capture].id);
   }
-
   function draw() {
+    if (S.inputMode === 'buttons') return;
     const W = surface.clientWidth, H = surface.clientHeight, d = ballEl.offsetWidth;
     const px = (P.x + 1) / 2 * W - d / 2, py = (P.y + 1) / 2 * H - d / 2;
     ballEl.classList.toggle('fall', S.falling);
-    ballEl.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) scale(${S.falling ? 0.62 : 1})`;
-    if (!reduceMotion) board.style.transform = `rotateX(${(-tilt.y * 6).toFixed(2)}deg) rotateY(${(tilt.x * 6).toFixed(2)}deg)`;
+    ballEl.style.transform = 'translate3d(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px,0) scale(' + (S.falling ? 0.62 : 1) + ')';
+    if (!reduceMotion) board.style.transform = 'rotateX(' + (-tilt.y * 6).toFixed(2) + 'deg) rotateY(' + (tilt.x * 6).toFixed(2) + 'deg)';
     for (let i = 0; i < 4; i++) rings[i].style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, P.dwell[i] / DWELL)));
   }
-
   let last = 0;
   function loop(now) {
-    const dt = last ? Math.min(0.033, (now - last) / 1000) : 0.016;
-    last = now;
-    const tt = S.locked ? { x: 0, y: 0 } : targetTilt();
+    const elapsed = last ? Math.max(0, (now - last) / 1000) : 1 / 60;
+    const dt = Math.min(elapsed, 0.05); last = now;
+    const active = !practiceUnavailable() && !S.locked && !S.submitted && S.inputMode === 'tilt' && !document.hidden;
+    const tt = active ? targetTilt() : { x: 0, y: 0 };
     const k = 1 - Math.exp(-dt * 14);
     tilt.x += (tt.x - tilt.x) * k; tilt.y += (tt.y - tilt.y) * k;
-    if (!S.locked) physics(dt);
-    draw();
+    if (active && !qaPaused) physics(dt, now);
+    if (!practiceApp.hidden) draw();
     requestAnimationFrame(loop);
   }
-
-  /* ---------- input: press-and-hold on the board, arrow keys, or the phone's tilt sensor ---------- */
   function tiltFromPointer(e) {
     const r = wrap.getBoundingClientRect();
     const x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
@@ -465,52 +1168,74 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     return { x: x * s, y: y * s };
   }
   wrap.addEventListener('pointerdown', (e) => {
-    if (S.locked) return;
+    if (practiceUnavailable() || S.locked || S.submitted || S.inputMode !== 'tilt') return;
     pointerId = e.pointerId;
-    try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
-    pointerTilt = tiltFromPointer(e);
-    e.preventDefault();
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* optional */ }
+    pointerTilt = tiltFromPointer(e); e.preventDefault();
   });
-  wrap.addEventListener('pointermove', (e) => { if (pointerTilt && e.pointerId === pointerId) pointerTilt = tiltFromPointer(e); });
-  const endPointer = (e) => { if (e.pointerId === pointerId) { pointerTilt = null; pointerId = null; } };
+  wrap.addEventListener('pointermove', (e) => {
+    if (pointerTilt && e.pointerId === pointerId) pointerTilt = tiltFromPointer(e);
+  });
+  const endPointer = (e) => {
+    if (e.pointerId === pointerId) { pointerTilt = null; pointerId = null; }
+  };
   wrap.addEventListener('pointerup', endPointer);
   wrap.addEventListener('pointercancel', endPointer);
   wrap.addEventListener('lostpointercapture', endPointer);
-
   const KEYMAP = { ArrowLeft: 'l', ArrowRight: 'r', ArrowUp: 'u', ArrowDown: 'd', a: 'l', d: 'r', w: 'u', s: 'd', A: 'l', D: 'r', W: 'u', S: 'd' };
   window.addEventListener('keydown', (e) => {
     const k = KEYMAP[e.key];
-    if (!k || e.altKey || e.ctrlKey || e.metaKey || S.locked) return;
+    if (!k || e.altKey || e.ctrlKey || e.metaKey || practiceUnavailable() || S.locked || S.submitted || S.inputMode !== 'tilt') return;
+    if (e.target.closest && e.target.closest('input,textarea,select')) return;
     keys.add(k); e.preventDefault();
   });
   window.addEventListener('keyup', (e) => { const k = KEYMAP[e.key]; if (k) keys.delete(k); });
-  window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('blur', () => { keys.clear(); pointerTilt = null; clearDwell(); last = 0; });
+  document.addEventListener('visibilitychange', () => { clearDwell(); keys.clear(); pointerTilt = null; last = 0; });
 
-  const SENSOR_MSG = '這個瀏覽器讀取不到手機的傾斜感應器。請按住木板或用方向鍵；正式 App 會用 App Inventor 的方向感應器。';
+  function setInputMode(mode) {
+    if (!['tilt', 'buttons'].includes(mode) || S.locked || S.submitted || mode === S.inputMode) return false;
+    S.inputMode = mode; S.selectedOptionId = null; resetBall(); renderInputMode(); syncButtons(); draw(); return true;
+  }
   function onOrientation(e) {
-    if (e.beta == null || e.gamma == null) return;
+    if (!sensor.on || e.beta == null || e.gamma == null) return;
     sensor.b = e.beta; sensor.g = e.gamma;
     if (!sensor.got) {
-      sensor.got = true; sensor.b0 = e.beta; sensor.g0 = e.gamma;
-      $('#calibBtn').hidden = false;
-      toast('已啟用手機傾斜：慢慢傾斜手機，小球就會滾動。', 3500);
+      sensor.got = true; sensor.pending = false; sensor.b0 = e.beta; sensor.g0 = e.gamma;
+      $('#sensorBtn').textContent = '手機傾斜已啟用'; $('#calibBtn').hidden = false;
+      toast('已啟用手機傾斜，現在的拿法已設為置中。', 2500);
     }
   }
-  async function enableSensor() {
-    if (sensor.on && sensor.got) { calibrate(); return; }
-    try {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const res = await DeviceOrientationEvent.requestPermission();
-        if (res !== 'granted') throw new Error('denied');
-      }
-      window.addEventListener('deviceorientation', onOrientation);
-      sensor.on = true;
-      setTimeout(() => {
-        if (!sensor.got) { sensor.on = false; window.removeEventListener('deviceorientation', onOrientation); toast(SENSOR_MSG, 7000); }
-      }, 1500);
-    } catch (err) { toast(SENSOR_MSG, 7000); }
+  function sensorFallback() {
+    sensor.on = false; sensor.pending = false; sensor.got = false; sensor.generation++;
+    window.removeEventListener('deviceorientation', onOrientation);
+    $('#sensorBtn').textContent = '用手機傾斜'; $('#calibBtn').hidden = true;
+    if (!S.locked && !S.submitted) setInputMode('buttons');
+    toast(S.inputMode === 'buttons'
+      ? '未能讀取傾斜感應器，已轉為直接點答案。'
+      : '未能讀取傾斜感應器；下一題可轉用按鈕模式。', 4000);
   }
-  function calibrate() { sensor.b0 = sensor.b; sensor.g0 = sensor.g; toast('已重新置中：現在的拿法就當作「平放」。', 2500); }
+  async function enableSensor() {
+    if (S.locked || S.submitted || S.inputMode !== 'tilt' || sensor.pending) return;
+    if (sensor.on && sensor.got) { calibrate(); return; }
+    const generation = ++sensor.generation;
+    sensor.pending = true;
+    try {
+      if (typeof DeviceOrientationEvent === 'undefined') { sensorFallback(); return; }
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if (permission !== 'granted') { sensorFallback(); return; }
+      }
+      if (generation !== sensor.generation || S.inputMode !== 'tilt' || S.locked) { sensor.pending = false; return; }
+      sensor.on = true; window.addEventListener('deviceorientation', onOrientation);
+      setTimeout(() => { if (generation === sensor.generation && !sensor.got) sensorFallback(); }, 1800);
+    } catch (err) { sensorFallback(); }
+  }
+  function calibrate() {
+    if (!sensor.got || S.locked || S.submitted) return;
+    sensor.b0 = sensor.b; sensor.g0 = sensor.g; resetBall(); draw();
+    toast('已重新置中：現在的拿法就當作平放。', 2200);
+  }
 
   /* ---------- sound (optional, starts only after the player acts) ---------- */
   let ac = null;
@@ -535,268 +1260,1214 @@ button:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
     } catch (err) { /* sound is optional */ }
   }
 
-  /* ---------- choosing an answer ---------- */
-  function choose(i) {
-    if (S.locked) return;
-    S.locked = true; pointerTilt = null; keys.clear();
-    const q = S.q, opt = q.opts[i], ok = opt.tag === 'ok';
-    P.vx = 0; P.vy = 0; P.x = HOLE[i].x; P.y = HOLE[i].y; P.dwell = [0, 0, 0, 0];
-    S.falling = true;
+  /* ---------- select first, submit exactly once ---------- */
+  function selectOption(id) {
+    if (practiceUnavailable() || S.locked || S.submitted || !S.q || !S.q.opts.some((o) => o.id === id)) return false;
+    S.selectedOptionId = id; updateSelection(); return true;
+  }
+  function submitAnswer() {
+    if (practiceUnavailable() || S.locked || S.submitted || S.selectedOptionId === null) return false;
+    const opt = S.q.opts.find((o) => o.id === S.selectedOptionId);
+    if (!opt) return false;
+    S.submitted = true; S.locked = true;
+    pointerTilt = null; pointerId = null; keys.clear(); P.vx = 0; P.vy = 0; clearDwell();
+    const i = S.q.opts.indexOf(opt), ok = opt.tag === 'ok';
+    practiceHints.answer(ok);
+    practiceHints.end();
+    if (S.inputMode === 'tilt') { P.x = HOLE[i].x; P.y = HOLE[i].y; S.falling = true; }
     holes[i].classList.add(ok ? 'is-good' : 'is-bad');
-    if (ok) S.score += 1;
+    if (ok) S.score++;
     else {
-      holes[q.opts.findIndex((o) => o.tag === 'ok')].classList.add('is-answer');
+      holes[S.q.opts.findIndex((o) => o.tag === 'ok')].classList.add('is-answer');
       S.errors[opt.tag] = (S.errors[opt.tag] || 0) + 1;
     }
-    updateStatus();
+    updateStatus(); syncButtons(); updateSelection(); draw();
     beep(ok ? [[660, 0.12], [880, 0.22]] : [[247, 0.16], [196, 0.3]]);
-    setTimeout(() => openExplain(opt), reduceMotion ? 60 : 520);
+    openExplain(opt); return true;
   }
 
-  /* ---------- overlays ---------- */
   const sheet = $('#sheet'), summary = $('#summary');
-  const hideTimers = new Map();
+  let explainFocusTimer = 0, conceptRevealFrame = 0;
   function openOverlay(o) {
-    clearTimeout(hideTimers.get(o));
-    o.hidden = false;
-    void o.offsetWidth;
-    o.classList.add('open');
+    o.hidden = false; void o.offsetWidth; o.classList.add('open');
   }
-  function closeOverlay(o) {
-    o.classList.remove('open');
-    hideTimers.set(o, setTimeout(() => { o.hidden = true; }, reduceMotion ? 0 : 340));
+  function closeOverlay(o) { o.classList.remove('open'); o.hidden = true; }
+  function clearConcept() {
+    cancelAnimationFrame(conceptRevealFrame); conceptRevealFrame = 0;
+    S.conceptAnswered = false; S.vizComplete = false;
+    $('#conceptQuestion').hidden = true; $('#conceptFeedback').textContent = '';
+    $('#conceptChoices').textContent = '';
+  }
+  function revealConceptInView() {
+    cancelAnimationFrame(conceptRevealFrame);
+    const question = S.q, generation = vizGeneration;
+    conceptRevealFrame = requestAnimationFrame(() => {
+      conceptRevealFrame = 0;
+      const concept = $('#conceptQuestion');
+      if (generation !== vizGeneration || S.q !== question || !S.submitted || !S.vizComplete || sheet.hidden || concept.hidden) return;
+      const card = sheet.querySelector('.sheet-card');
+      const bounds = card.getBoundingClientRect(), style = getComputedStyle(card);
+      const top = bounds.top + card.clientTop + parseFloat(style.paddingTop);
+      const bottom = bounds.top + card.clientTop + card.clientHeight - parseFloat(style.paddingBottom);
+      const promptTop = concept.getBoundingClientRect().top;
+      const choicesBottom = $('#conceptChoices').getBoundingClientRect().bottom;
+      // Scroll only this dialog, and keep the prompt and both choices together.
+      let delta = 0;
+      if (choicesBottom - promptTop > bottom - top || promptTop < top) delta = promptTop - top;
+      else if (choicesBottom > bottom) delta = choicesBottom - bottom;
+      if (delta) card.scrollTo({ top: card.scrollTop + delta, behavior: 'auto' });
+    });
+  }
+  function showConcept() {
+    if (!S.submitted || !S.vizComplete || sheet.hidden || S.conceptAnswered) return;
+    const div = S.q.op === 'div';
+    const question = div
+      ? S.q.a + ' ÷ ' + S.q.b + ' = ' + S.q.c + ' 中，' + S.q.b + ' 代表甚麼？'
+      : S.q.a + ' × ' + S.q.b + ' 中，' + S.q.b + ' 代表甚麼？';
+    $('#conceptPrompt').textContent = question;
+    const choices = div
+      ? [['parts', '份數'], ['per', '每份有多少個']]
+      : [['per', '每組有多少個'], ['groups', '有多少組']];
+    const host = $('#conceptChoices'); host.textContent = '';
+    shuffle(choices).forEach(([id, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn'; b.dataset.conceptAnswer = id; b.textContent = label; host.append(b);
+    });
+    $('#conceptQuestion').hidden = false;
+    revealConceptInView();
+  }
+  function answerConcept(id) {
+    if (!S.submitted || !S.vizComplete || S.conceptAnswered || !['parts', 'per', 'groups'].includes(id)) return false;
+    const correctId = S.q.op === 'div' ? 'parts' : 'per';
+    const allowed = S.q.op === 'div' ? ['parts', 'per'] : ['per', 'groups'];
+    if (!allowed.includes(id)) return false;
+    S.conceptAnswered = true; S.conceptTotal++;
+    if (id === correctId) S.conceptCorrect++;
+    $('#conceptFeedback').textContent = S.q.op === 'div'
+      ? S.q.b + ' 是已知的份數；每份有 ' + S.q.c + ' 個。'
+      : S.q.b + ' 是每組個數；一共有 ' + S.q.a + ' 組。';
+    $('#conceptChoices').querySelectorAll('button').forEach((b) => {
+      b.disabled = true; b.setAttribute('aria-pressed', String(b.dataset.conceptAnswer === id));
+    });
+    return true;
   }
   function openExplain(opt) {
     const ok = opt.tag === 'ok', v = $('#verdict');
-    v.textContent = ok ? '答對了！' : '再想一想';
+    v.textContent = ok ? '答對了！' : '看看圖像解說';
     v.className = 'verdict ' + (ok ? 'good' : 'bad');
     $('#why').textContent = whyText(S.q, opt);
     $('#nextBtn').textContent = S.qi + 1 >= ROUND ? '看看成績' : '下一題';
-    openOverlay(sheet);
-    playViz(S.q);
-    setTimeout(() => { try { $('#nextBtn').focus({ preventScroll: true }); } catch (err) { /* focus is optional */ } }, 60);
+    clearConcept(); openOverlay(sheet); playViz(S.q);
+    clearTimeout(explainFocusTimer);
+    explainFocusTimer = setTimeout(() => {
+      if (S.submitted && !sheet.hidden) $('#nextBtn').focus({ preventScroll: true });
+    }, 60);
+  }
+  function prepareQuestion() {
+    S.selectedOptionId = null; S.submitted = false; S.locked = false; clearConcept();
+    S.q = makeQ(); practiceHints.start(S.q, 'practice');
+    resetBall(); renderQuestion(); syncButtons(); draw();
   }
   function nextQ() {
-    clearViz(); closeOverlay(sheet);
-    S.qi += 1;
-    if (S.qi >= ROUND) { setTimeout(showSummary, reduceMotion ? 0 : 220); return; }
-    S.q = makeQ(); renderQuestion(); resetBall(); S.locked = false;
+    if (!S.submitted || sheet.hidden) return false;
+    S.submitted = false; S.locked = true;
+    clearViz(); clearTimeout(explainFocusTimer); closeOverlay(sheet); clearConcept();
+    S.qi++;
+    if (S.qi >= ROUND) showSummary();
+    else prepareQuestion();
+    return true;
   }
   function showSummary() {
-    S.locked = true;
-    $('#sumScore').textContent = `答對 ${S.score}／${ROUND} 題`;
-    const list = $('#sumList');
-    list.textContent = '';
+    S.locked = true; S.selectedOptionId = null; resetBall(); syncButtons(); updateSelection();
+    $('#sumScore').textContent = '答對 ' + S.score + '／' + ROUND + ' 題';
+    $('#sumHints').textContent = '用了提示 ' + practiceHints.total + ' 次';
+    const list = $('#sumList'); list.textContent = '';
     const entries = Object.entries(S.errors).sort((x, y) => y[1] - x[1]);
     if (!entries.length) {
-      const li = document.createElement('li'); li.textContent = '全部答對，沒有出錯！'; list.append(li);
+      const li = document.createElement('li'); li.textContent = '本輪十題全部答對。'; list.append(li);
     }
-    for (const [tag, n] of entries) {
-      const li = document.createElement('li'); li.textContent = `${(TAGS[tag] || TAGS.near).label}：${n} 次`; list.append(li);
+    for (const [tag, count] of entries) {
+      const li = document.createElement('li');
+      li.textContent = '曾選到' + (TAGS[tag] || TAGS.near).label + '：' + count + ' 次'; list.append(li);
     }
-    $('#sumTip').textContent = entries.length ? '建議：' + (TAGS[entries[0][0]] || TAGS.near).tip : '可以試試「進階」或「混合」。';
+    $('#sumTip').textContent = entries.length
+      ? (TAGS[entries[0][0]] || TAGS.near).tip : '可以試試進階或混合題型。';
+    $('#sumConcept').textContent = S.conceptTotal
+      ? '圖意判斷：答對 ' + S.conceptCorrect + '／' + S.conceptTotal + ' 題'
+      : '圖意判斷：本輪未作答';
     openOverlay(summary);
+    $('#againBtn').focus({ preventScroll: true });
   }
   function newRound() {
+    closeAll();
+    practiceHints.resetRound();
     S.qi = 0; S.score = 0; S.errors = {}; S.seen = new Set();
-    S.q = makeQ(); renderQuestion(); resetBall(); S.locked = false;
+    S.conceptCorrect = 0; S.conceptTotal = 0;
+    prepareQuestion();
   }
   function closeAll() {
-    clearViz();
-    if (!sheet.hidden) closeOverlay(sheet);
-    if (!summary.hidden) closeOverlay(summary);
+    clearViz(); clearTimeout(explainFocusTimer);
+    closeOverlay(sheet); closeOverlay(summary);
   }
 
-  /* ---------- animated explanation: a rectangle split into equal parts ---------- */
+  /* ---------- object/group animation shared helpers ---------- */
   const NS = 'http://www.w3.org/2000/svg';
-  const VB = { x: 10, y: 20, w: 340, h: 126 };
   const COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)', 'var(--c9)'];
-  let vizTimers = [];
-  const later = (ms, fn) => { vizTimers.push(setTimeout(fn, reduceMotion ? Math.min(ms, 40) : ms)); };
-  function clearViz() { vizTimers.forEach(clearTimeout); vizTimers = []; }
+  let vizTimers = [], vizGeneration = 0;
+  function later(ms, fn) { vizTimers.push(setTimeout(fn, ms)); }
+  function clearViz() {
+    vizTimers.forEach(clearTimeout); vizTimers = []; vizGeneration++;
+  }
   function mk(name, attrs, parent) {
     const e = document.createElementNS(NS, name);
     for (const k of Object.keys(attrs)) e.setAttribute(k, String(attrs[k]));
-    parent.appendChild(e);
-    return e;
+    parent.appendChild(e); return e;
   }
   const say = (text) => { $('#vizStep').textContent = text; };
-  function fit(n, w, h) {
-    let best = null;
-    for (let cols = 1; cols <= n; cols++) {
-      const rows = Math.ceil(n / cols), cell = Math.min(w / cols, h / rows);
-      if (!best || cell > best.cell) best = { cols, rows, cell };
-    }
-    return best;
-  }
-  function layout(parts, per, total) {
-    const segW = VB.w / parts, pad = 8;
-    const fp = fit(per, segW - pad * 2, VB.h - pad * 2);
-    const fs = fit(total, VB.w - pad * 2, VB.h - pad * 2);
-    const cell = Math.min(fp.cell, fs.cell, 30), size = cell * 0.78, off = (cell - size) / 2;
-    const at = (cols, rows, x0, w, i) => {
-      const gx = x0 + (w - cols * cell) / 2, gy = VB.y + (VB.h - rows * cell) / 2;
-      return { x: gx + (i % cols) * cell + off, y: gy + Math.floor(i / cols) * cell + off };
-    };
-    return {
-      parts, size, segW,
-      part: (k, j) => at(fp.cols, fp.rows, VB.x + k * segW, segW, j),
-      spread: (i) => at(fs.cols, fs.rows, VB.x, VB.w, i)
-    };
-  }
   function cube(svg, L, pos, fill) {
     const r = mk('rect', { width: L.size.toFixed(2), height: L.size.toFixed(2), rx: (L.size * 0.24).toFixed(2), class: 'cube' }, svg);
-    r.style.transform = `translate(${pos.x.toFixed(2)}px, ${pos.y.toFixed(2)}px)`;
-    r.style.fill = fill;
-    return r;
-  }
-  function drawBar(svg) { mk('rect', { x: VB.x, y: VB.y, width: VB.w, height: VB.h, rx: 14, class: 'bar' }, svg); }
-  function drawDividers(svg, parts, animate) {
-    const len = VB.h - 10;
-    for (let k = 1; k < parts; k++) {
-      const x = (VB.x + k * VB.w / parts).toFixed(2);
-      const ln = mk('line', { x1: x, y1: VB.y + 5, x2: x, y2: VB.y + VB.h - 5, class: 'divider' }, svg);
-      ln.style.strokeDasharray = String(len);
-      ln.style.strokeDashoffset = animate ? String(len) : '0';
-      if (animate) later(30 + k * 110, () => { void ln.getBoundingClientRect(); ln.style.strokeDashoffset = '0'; });
-    }
-  }
-  function drawLabel(svg, L, k, text, color) {
-    const x0 = VB.x + k * L.segW, x1 = x0 + L.segW, yb = VB.y + VB.h + 8;
-    const g = mk('g', { class: 'plab' }, svg);
-    const br = mk('path', { d: `M${(x0 + 7).toFixed(1)} ${yb} v5 H${(x1 - 7).toFixed(1)} v-5`, class: 'brace' }, g);
-    br.style.stroke = color;
-    const t = mk('text', { x: ((x0 + x1) / 2).toFixed(1), y: yb + 30, 'text-anchor': 'middle', class: 'pnum' }, g);
-    t.textContent = text;
-    void g.getBoundingClientRect();
-    g.classList.add('on');
+    r.style.transform = 'translate(' + pos.x.toFixed(2) + 'px,' + pos.y.toFixed(2) + 'px)';
+    r.style.fill = fill; return r;
   }
   function showEq(prefix, ans, check) {
-    const eq = $('#vizEq');
-    eq.textContent = prefix;
+    const eq = $('#vizEq'); eq.textContent = prefix;
     const b = document.createElement('b'); b.textContent = String(ans); eq.append(b);
     eq.classList.add('on');
     const ck = $('#vizCheck'); ck.textContent = check; ck.classList.add('on');
   }
-
-  function vizDiv(svg, q) {
-    const a = q.a, b = q.b, c = q.c;
-    const L = layout(b, c, a);
-    drawBar(svg);
-    const cubes = [];
-    for (let i = 0; i < a; i++) { const r = cube(svg, L, L.spread(i), 'var(--cube-plain)'); r.style.opacity = '0'; cubes.push(r); }
-    say(`這裏一共有 ${a} 個。`);
-    cubes.forEach((r, i) => later(40 + i * 28, () => { r.style.opacity = '1'; }));
-    const t1 = Math.max(1000, 40 + a * 28 + 500);
-    later(t1, () => { say(`用線把長方形平均分成 ${b} 份。`); drawDividers(svg, b, true); });
-    const t2 = t1 + 1100, st = Math.max(50, Math.min(120, 2600 / a));
-    later(t2, () => say('一個一個輪流放進每一份……'));
-    cubes.forEach((r, i) => later(t2 + i * st, () => {
-      const k = i % b, p = L.part(k, Math.floor(i / b));
-      r.style.transform = `translate(${p.x.toFixed(2)}px, ${p.y.toFixed(2)}px)`;
-      r.style.fill = COLORS[k % COLORS.length];
-    }));
-    const t3 = t2 + a * st + 650;
-    later(t3, () => say(`每一份都有 ${c} 個。`));
-    for (let k = 0; k < b; k++) later(t3 + k * 240, () => drawLabel(svg, L, k, String(c), COLORS[k % COLORS.length]));
-    const t4 = t3 + b * 240 + 450;
-    later(t4, () => {
-      say(`所以 ${a} ÷ ${b} = ${c}。`);
-      showEq(`${a} ÷ ${b} = `, c, `檢查：${b} 份 × 每份 ${c} 個 = ${a} 個 ✓`);
-    });
+  // Equal-sharing visualization. These helpers do not use the old area-divider layout.
+  function divGridFit(count, width, height) {
+    let best = null;
+    for (let cols = 1; cols <= count; cols++) {
+      const rows = Math.ceil(count / cols);
+      const cell = Math.min(width / cols, height / rows);
+      if (!best || cell > best.cell) best = { cols, rows, cell };
+    }
+    return best;
   }
 
-  function vizMul(svg, q) {
-    const a = q.a, b = q.b, c = q.c; // a groups with b in each group
-    const L = layout(a, b, c);
-    drawBar(svg);
-    drawDividers(svg, a, true);
-    say(`一共 ${a} 組，每組 ${b} 個。`);
-    const gd = Math.max(520, b * 110 + 260);
-    for (let k = 0; k < a; k++) {
-      later(900 + k * gd, () => {
-        for (let j = 0; j < b; j++) {
-          const p = L.part(k, j);
-          const r = cube(svg, L, { x: p.x, y: p.y - 24 }, COLORS[k % COLORS.length]);
-          r.style.opacity = '0';
-          later(30 + j * 100, () => {
-            void r.getBoundingClientRect();
-            r.style.opacity = '1';
-            r.style.transform = `translate(${p.x.toFixed(2)}px, ${p.y.toFixed(2)}px)`;
-          });
-        }
-        drawLabel(svg, L, k, String(b), COLORS[k % COLORS.length]);
-        const seq = [];
-        for (let n = 1; n <= k + 1; n++) seq.push(n * b);
-        say(`一組一組數：${seq.join('、')}`);
+  function divVizLayout(q) {
+    if (![q.a, q.b, q.c].every(Number.isInteger) || q.b < 1 || q.c < 1 || q.a !== q.b * q.c) {
+      throw new Error('Equal-sharing visualization requires a = b × c with positive integer parts.');
+    }
+    const width = 360, margin = 12, gap = 9;
+    const source = { x: margin, y: 30, w: width - 2 * margin, h: q.a > 36 ? 154 : q.a > 20 ? 120 : 84 };
+    const columns = q.b === 4 ? 2 : Math.min(q.b, 3);
+    const rows = Math.ceil(q.b / columns);
+    const boxW = (width - 2 * margin - gap * (columns - 1)) / columns;
+    const boxH = 102, headingY = source.y + source.h + 25, boxY = headingY + 12;
+    const containers = Array.from({ length: q.b }, (_, k) => ({
+      x: margin + (k % columns) * (boxW + gap),
+      y: boxY + Math.floor(k / columns) * (boxH + gap),
+      w: boxW, h: boxH
+    }));
+    const sf = divGridFit(q.a, source.w - 18, source.h - 16);
+    const pf = divGridFit(q.c, boxW - 16, boxH - 50);
+    const size = Math.min(26, sf.cell * 0.82, pf.cell * 0.82);
+    const positions = (f, area, count) => {
+      const left = area.x + (area.w - f.cols * f.cell) / 2;
+      const top = area.y + (area.h - f.rows * f.cell) / 2;
+      return Array.from({ length: count }, (_, i) => ({
+        x: left + (i % f.cols) * f.cell + (f.cell - size) / 2,
+        y: top + Math.floor(i / f.cols) * f.cell + (f.cell - size) / 2
+      }));
+    };
+    const sourcePositions = positions(sf, { x: source.x + 9, y: source.y + 8, w: source.w - 18, h: source.h - 16 }, q.a);
+    const targetPositions = containers.map((r) => positions(pf, { x: r.x + 8, y: r.y + 25, w: r.w - 16, h: r.h - 50 }, q.c));
+    return {
+      width, height: boxY + rows * boxH + (rows - 1) * gap + margin,
+      source, headingY, containers, size, sourcePositions, targetPositions
+    };
+  }
+
+  function vizDiv(svg, q, onComplete = () => {}) {
+    const L = divVizLayout(q);
+    const a = q.a, b = q.b, c = q.c;
+    let completed = false;
+    const counts = Array(b).fill(0);
+    svg.setAttribute('viewBox', `0 0 ${L.width} ${L.height}`);
+    svg.setAttribute('data-stage', 'objects');
+    svg.setAttribute('data-object-count', a);
+    svg.setAttribute('data-known-parts', b);
+    svg.setAttribute('data-per-part', c);
+    const caption = (text, x, y, attrs = {}, parent = svg) => {
+      const t = mk('text', { x, y, fill: 'var(--ink)', 'font-size': 15, 'text-anchor': 'middle', ...attrs }, parent);
+      t.textContent = text;
+      return t;
+    };
+    caption(`同一批 ${a} 個物件`, L.width / 2, 19, { 'font-weight': 700 });
+    mk('rect', { x: L.source.x, y: L.source.y, width: L.source.w, height: L.source.h, rx: 10, fill: 'var(--bar)', stroke: 'var(--line)', 'stroke-width': 1.5, 'data-source-tray': '' }, svg);
+    const heading = caption(`已知要分成 ${b} 份；每份有多少個？`, L.width / 2, L.headingY, { 'font-size': 14, 'data-sharing-heading': '' });
+    const containerGroup = mk('g', { visibility: 'hidden', 'data-containers': '', 'data-visible': 'false' }, svg);
+    const counterLabels = [];
+    L.containers.forEach((r, k) => {
+      const g = mk('g', { 'data-container': k + 1, 'data-count': 0 }, containerGroup);
+      mk('rect', { x: r.x, y: r.y, width: r.w, height: r.h, rx: 11, fill: 'var(--card)', stroke: COLORS[k % COLORS.length], 'stroke-width': 2 }, g);
+      caption(`第 ${k + 1} 份`, r.x + r.w / 2, r.y + 18, { 'font-size': 14, 'font-weight': 700, fill: COLORS[k % COLORS.length] }, g);
+      counterLabels.push(caption('0 個', r.x + r.w / 2, r.y + r.h - 9, { 'font-size': 15, 'font-family': 'var(--f-num)', 'data-count-label': k + 1 }, g));
+    });
+    const objectGroup = mk('g', { 'data-shared-objects': '' }, svg);
+    const objects = L.sourcePositions.map((p, i) => {
+      const r = cube(objectGroup, L, p, 'var(--cube-plain)');
+      r.setAttribute('data-object-index', i + 1);
+      r.setAttribute('data-container', 'source');
+      return r;
+    });
+    const move = (i, immediate = false) => {
+      const k = i % b, j = Math.floor(i / b), p = L.targetPositions[k][j];
+      const r = objects[i];
+      if (immediate) r.style.transition = 'none';
+      r.style.transform = `translate(${p.x.toFixed(2)}px, ${p.y.toFixed(2)}px)`;
+      r.style.fill = COLORS[k % COLORS.length];
+      r.setAttribute('data-destination', k + 1);
+      const arrive = () => {
+        r.setAttribute('data-container', k + 1);
+        counts[k] += 1;
+        counterLabels[k].textContent = `${counts[k]} 個`;
+        counterLabels[k].parentNode.setAttribute('data-count', counts[k]);
+      };
+      if (immediate) arrive();
+      else later(550, arrive);
+    };
+    const finish = () => {
+      if (completed) return;
+      completed = true;
+      svg.setAttribute('data-stage', 'complete');
+      heading.textContent = `已知 ${b} 份；找到每份 ${c} 個`;
+      say(`把 ${a} 個物件平均分成 ${b} 份，每份都有 ${c} 個，沒有剩餘。`);
+      showEq(`${a} ÷ ${b} = `, c, `驗算：${b} 份 × 每份 ${c} 個 = ${a} 個 ✓`);
+      onComplete();
+    };
+    const revealContainers = () => {
+      svg.setAttribute('data-stage', 'containers');
+      containerGroup.setAttribute('visibility', 'visible');
+      containerGroup.setAttribute('data-visible', 'true');
+      say(`已知要平均分成 ${b} 份，先準備 ${b} 個空容器。`);
+    };
+    if (reduceMotion) {
+      revealContainers();
+      objects.forEach((_, i) => move(i, true));
+      finish();
+      return;
+    }
+    say(`這裏一共有 ${a} 個物件。`);
+    later(1000, revealContainers);
+    const distributionStart = 1800;
+    const interval = Math.max(28, Math.min(180, 2600 / a));
+    svg.setAttribute('data-duration-ms', Math.ceil(distributionStart + (a - 1) * interval + 650));
+    later(distributionStart, () => {
+      svg.setAttribute('data-stage', 'distributing');
+      say('把同一批物件一個一個輪流分配，每一份都要一樣多。');
+    });
+    objects.forEach((_, i) => later(distributionStart + i * interval, () => move(i)));
+    later(distributionStart + (a - 1) * interval + 650, finish);
+  }
+  function vizMul(svg, q, onComplete = () => {}) {
+    const L = divVizLayout({ a: q.c, b: q.a, c: q.b });
+    const dy = 40 - L.containers[0].y;
+    svg.setAttribute('viewBox', '0 0 ' + L.width + ' ' + (L.height + dy));
+    svg.setAttribute('data-stage', 'groups');
+    svg.setAttribute('data-object-count', q.c);
+    svg.setAttribute('data-known-groups', q.a);
+    svg.setAttribute('data-per-group', q.b);
+    const caption = (text, x, y, attrs = {}, parent = svg) => {
+      const t = mk('text', { x, y, fill: 'var(--ink)', 'font-size': 15, 'text-anchor': 'middle', ...attrs }, parent);
+      t.textContent = text; return t;
+    };
+    caption(q.a + ' 組，每組 ' + q.b + ' 個', 180, 21, { 'font-weight': 700 });
+    const objects = [], counts = [];
+    L.containers.forEach((r, k) => {
+      const g = mk('g', { 'data-group': k + 1, 'data-count': 0 }, svg);
+      mk('rect', { x: r.x, y: r.y + dy, width: r.w, height: r.h, rx: 11, fill: 'var(--card)', stroke: COLORS[k], 'stroke-width': 2 }, g);
+      caption('第 ' + (k + 1) + ' 組', r.x + r.w / 2, r.y + dy + 18, { 'font-size': 14, fill: COLORS[k], 'font-weight': 700 }, g);
+      counts[k] = caption('0 個', r.x + r.w / 2, r.y + dy + r.h - 9, { 'font-family': 'var(--f-num)' }, g);
+      objects[k] = L.targetPositions[k].map((p, j) => {
+        const obj = cube(g, L, { x: p.x, y: p.y + dy - 15 }, COLORS[k]);
+        obj.style.opacity = '0'; obj.setAttribute('data-object-index', k * q.b + j + 1);
+        obj.setAttribute('data-group', k + 1);
+        return { obj, x: p.x, y: p.y + dy };
+      });
+    });
+    let completed = false;
+    const finish = () => {
+      if (completed) return; completed = true;
+      svg.setAttribute('data-stage', 'complete');
+      say(q.a + ' 組，每組 ' + q.b + ' 個，一共有 ' + q.c + ' 個。');
+      showEq(q.a + ' × ' + q.b + ' = ', q.c, '驗算：' + q.c + ' ÷ ' + q.a + ' = ' + q.b + '（每組個數）');
+      onComplete();
+    };
+    const showObject = (k, j, immediate) => {
+      const item = objects[k][j];
+      if (immediate) item.obj.style.transition = 'none';
+      item.obj.style.opacity = '1';
+      item.obj.style.transform = 'translate(' + item.x.toFixed(2) + 'px,' + item.y.toFixed(2) + 'px)';
+      counts[k].textContent = (j + 1) + ' 個';
+      counts[k].parentNode.setAttribute('data-count', j + 1);
+    };
+    if (reduceMotion) {
+      for (let k = 0; k < q.a; k++) for (let j = 0; j < q.b; j++) showObject(k, j, true);
+      finish(); return;
+    }
+    say('一共有 ' + q.a + ' 組，逐組放入物件。');
+    const groupGap = Math.max(350, Math.min(800, 4200 / q.a));
+    const objectGap = Math.min(80, (groupGap - 160) / q.b);
+    for (let k = 0; k < q.a; k++) {
+      for (let j = 0; j < q.b; j++) later(450 + k * groupGap + j * objectGap, () => showObject(k, j, false));
+      later(450 + k * groupGap + (q.b - 1) * objectGap, () => {
+        const sequence = Array.from({ length: k + 1 }, (_, i) => (i + 1) * q.b);
+        say('一組一組數：' + sequence.join('、'));
       });
     }
-    later(900 + a * gd + 300, () => {
-      say(`所以 ${a} × ${b} = ${c}。`);
-      showEq(`${a} × ${b} = `, c, `反過來：${c} ÷ ${a} = ${b}（把 ${c} 個平均分成 ${a} 份，每份 ${b} 個）`);
-    });
+    const duration = 450 + (q.a - 1) * groupGap + (q.b - 1) * objectGap + 600;
+    svg.setAttribute('data-duration-ms', Math.ceil(duration));
+    later(duration, finish);
   }
 
   function playViz(q) {
     clearViz();
-    const svg = $('#viz');
-    svg.textContent = '';
+    const generation = vizGeneration, question = S.q;
+    S.vizComplete = false;
+    sheet.querySelector('.sheet-card').scrollTop = 0;
+    if (!S.conceptAnswered) $('#conceptQuestion').hidden = true;
+    const svg = $('#viz'); svg.textContent = '';
     const eq = $('#vizEq'), ck = $('#vizCheck');
     eq.classList.remove('on'); eq.textContent = '';
     ck.classList.remove('on'); ck.textContent = '';
     svg.setAttribute('aria-label', q.op === 'div'
-      ? `動畫：把 ${q.a} 個平均分成 ${q.b} 份，每份 ${q.c} 個`
-      : `動畫：${q.a} 組，每組 ${q.b} 個，一共 ${q.c} 個`);
-    if (q.op === 'div') vizDiv(svg, q); else vizMul(svg, q);
+      ? '動畫：把 ' + q.a + ' 個物件平均分成 ' + q.b + ' 份，每份 ' + q.c + ' 個'
+      : '動畫：' + q.a + ' 組，每組 ' + q.b + ' 個，一共 ' + q.c + ' 個');
+    const complete = () => {
+      if (generation !== vizGeneration || S.q !== question || !S.submitted || sheet.hidden) return;
+      S.vizComplete = true; showConcept();
+    };
+    if (q.op === 'div') vizDiv(svg, q, complete);
+    else vizMul(svg, q, complete);
   }
 
-  /* ---------- settings ---------- */
+  /* ---------- F2: optional, progressive, local hints ---------- */
+  const hintOverlay = $('#hintOverlay');
+  const hintTitle = $('#hintTitle'), hintBody = $('#hintBody');
+  const hintClose = $('#hintClose'), hintNext = $('#hintNext');
+  let activeHints = null;
+
+  function hintLimit(q, kind) {
+    return kind === 'candy' || q.op === 'div' ? 3 : 2;
+  }
+
+  function buildHint(q, kind, level, state) {
+    if (kind === 'candy') {
+      if (level === 1) return { text: '每個籃的糖要一樣多。' };
+      if (level === 2) return {
+        text: q.op === 'div'
+          ? '總共 ' + state.total + ' 粒糖，有 ' + state.basketCount + ' 個籃。試試先每籃放一包。'
+          : '有 ' + state.basketCount + ' 個籃。試試先每籃放一包，再看每籃的目標。'
+      };
+      const directions = state.counts.flatMap((count, index) => count === state.target ? [] : [
+        { index, text: '第 ' + (index + 1) + ' 籃：' + (count > state.target ? '放多了' : '還需要糖') }
+      ]);
+      return {
+        text: directions.length
+          ? '看看標記的籃，想想哪些放多了，哪些還需要糖。'
+          : '各籃的數量已合適，可以檢查糖包區，再按「完成」。',
+        baskets: directions.map(direction => direction.index), directions
+      };
+    }
+    if (q.op === 'div') {
+      if (level === 2) return {
+        text: '每行排 ' + q.b + ' 粒。想想怎樣把同一行的糖分給各籃。',
+        dots: q.a, columns: q.b
+      };
+      const firstPass = level === 3;
+      return {
+        text: firstPass
+          ? '先派第一輪，每籃一粒。餘下的糖繼續逐輪平均派。'
+          : '把 ' + q.a + ' 粒糖平均分到 ' + q.b + ' 個籃。觀察糖和空籃。',
+        dots: q.a - (firstPass ? q.b : 0),
+        columns: Math.ceil(Math.sqrt(q.a)),
+        basketCount: q.b, firstPass
+      };
+    }
+    if (level === 1) return {
+      text: '看看每組有多少粒，再數一數有幾組。',
+      groupCount: q.a, dotsPerGroup: q.b
+    };
+    // With two groups, the second skip-count is the answer. Leave it blank.
+    return {
+      text: '每多一組，就加 ' + q.b + '。試試繼續跳數。',
+      sequence: Array.from({ length: q.a }, (_, index) =>
+        index === 0 || (index === 1 && q.a > 2) ? String((index + 1) * q.b) : '□')
+    };
+  }
+
+  function hintDots(count, columns) {
+    const grid = document.createElement('div');
+    grid.className = 'hint-dots';
+    grid.style.setProperty('--hint-columns', columns);
+    for (let i = 0; i < count; i++) grid.append(document.createElement('i'));
+    return grid;
+  }
+
+  function renderHint(model) {
+    const message = document.createElement('p');
+    message.textContent = model.text;
+    hintBody.replaceChildren(message);
+    if (model.dots) {
+      const pile = hintDots(model.dots, model.columns);
+      pile.setAttribute('role', 'img');
+      pile.setAttribute('aria-label', '糖粒排列圖');
+      hintBody.append(pile);
+    }
+    if (model.basketCount || model.groupCount) {
+      const groups = document.createElement('div');
+      groups.className = 'hint-groups';
+      groups.setAttribute('role', 'img');
+      groups.setAttribute('aria-label', model.basketCount ? '分糖籃圖' : '等量分組圖');
+      for (let i = 0; i < (model.basketCount || model.groupCount); i++) {
+        const group = document.createElement('div');
+        group.className = 'hint-group';
+        const count = model.groupCount ? model.dotsPerGroup : Number(model.firstPass);
+        if (count) group.append(hintDots(count, Math.min(count, 3)));
+        groups.append(group);
+      }
+      hintBody.append(groups);
+    }
+    if (model.sequence) {
+      const sequence = document.createElement('p');
+      sequence.className = 'hint-sequence';
+      sequence.textContent = model.sequence.join('、');
+      hintBody.append(sequence);
+    }
+    if (model.directions?.length) {
+      const list = document.createElement('ul');
+      for (const direction of model.directions) {
+        const row = document.createElement('li');
+        row.textContent = direction.text;
+        list.append(row);
+      }
+      hintBody.append(list);
+    }
+  }
+
+  function makeHints(host, { beforeOpen = () => {} } = {}) {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'btn hint-trigger';
+    trigger.textContent = '提示';
+    trigger.disabled = true;
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-controls', 'hintOverlay');
+    host.append(trigger);
+    let records = [], current = null, wrongStreak = 0, promptPending = false, enabled = false;
+
+    function syncTrigger() {
+      trigger.disabled = !enabled;
+      const flash = enabled && promptPending;
+      trigger.classList.toggle('hint-flash', flash);
+      trigger.setAttribute('aria-label', flash ? '提示，可選擇查看' : '提示');
+    }
+
+    function advance() {
+      if (!enabled || !current) return;
+      const { q, kind, getState } = current;
+      const state = getState ? getState() : null;
+      if (state?.locked) return;
+      const max = hintLimit(q, kind);
+      current.record.levels = Math.min(max, current.record.levels + 1);
+      promptPending = false;
+      syncTrigger();
+      const level = current.record.levels;
+      const model = buildHint(q, kind, level, state);
+      if (model.baskets && state && state.highlightHints) state.highlightHints(model.baskets);
+      hintTitle.textContent = '提示 ' + level + '／' + max;
+      hintOverlay.dataset.level = String(level);
+      hintOverlay.dataset.kind = kind;
+      renderHint(model);
+      hintNext.disabled = level >= max;
+      activeHints = controller;
+      if (!hintOverlay.open) {
+        beforeOpen();
+        hintOverlay.showModal();
+      }
+      hintOverlay.scrollTop = 0;
+      if (hintNext.disabled) hintClose.focus({ preventScroll: true });
+    }
+
+    const controller = {
+      start(q, kind, getState) {
+        controller.end();
+        const record = { op: q.op, a: q.a, b: q.b, levels: 0 };
+        records.push(record);
+        current = { q, kind, getState, record, answered: false };
+        enabled = true;
+        syncTrigger();
+      },
+      answer(ok) {
+        if (!current || current.answered) return;
+        current.answered = true;
+        wrongStreak = ok ? 0 : wrongStreak + 1;
+        promptPending = wrongStreak >= 2;
+        syncTrigger();
+      },
+      end() {
+        enabled = false;
+        if (activeHints === controller && hintOverlay.open) hintOverlay.close();
+        syncTrigger();
+      },
+      resetRound() {
+        controller.end();
+        records = [];
+        current = null;
+        wrongStreak = 0;
+        promptPending = false;
+      },
+      get total() { return records.reduce((sum, record) => sum + record.levels, 0); },
+      get usage() { return records.map(record => ({ ...record })); },
+      advance
+    };
+    trigger.addEventListener('click', advance);
+    return controller;
+  }
+
+  hintClose.addEventListener('click', () => hintOverlay.close());
+  hintNext.addEventListener('click', () => activeHints?.advance());
+  hintOverlay.addEventListener('close', () => {
+    if (!hintOverlay.open) activeHints = null;
+  });
+
+/* Pure packet generation and validation. Embedded in index.html as well as tested in Node. */
+function candyRandomIndex(length, rng) {
+  const value = rng();
+  if (!Number.isFinite(value) || value < 0 || value >= 1) throw new RangeError('Candy RNG must return [0, 1).');
+  return Math.floor(value * length);
+}
+
+function candyShuffle(items, rng) {
+  const order = items.slice();
+  for (let index = order.length - 1; index > 0; index--) {
+    const swap = candyRandomIndex(index + 1, rng);
+    [order[index], order[swap]] = [order[swap], order[index]];
+  }
+  return order;
+}
+
+function createCandyPackets(basketCount, target, { rng = Math.random, includeWitness = false } = {}) {
+  if (!Number.isInteger(basketCount) || basketCount < 2 || basketCount > 5 ||
+      !Number.isInteger(target) || target < 2 || target > 9) {
+    throw new RangeError('Candy requires 2–5 baskets and 2–9 candies per basket.');
+  }
+  const generated = [];
+  for (let basket = 0; basket < basketCount; basket++) {
+    const parts = basketCount <= 3 && target >= 3 ? 2 + candyRandomIndex(2, rng) : 2;
+    let remaining = target;
+    // Reserve at least one candy for every remaining packet in this basket.
+    for (let packetsLeft = parts; packetsLeft > 1; packetsLeft--) {
+      const value = 1 + candyRandomIndex(remaining - packetsLeft + 1, rng);
+      generated.push({ value, basket });
+      remaining -= value;
+    }
+    generated.push({ value: remaining, basket });
+  }
+  const shuffled = candyShuffle(generated, rng);
+  const packets = shuffled.map(({ value }, id) => ({ id, value }));
+  return includeWitness ? { packets, witness: shuffled.map(({ basket }) => basket) } : { packets };
+}
+
+function createCandyRound(op, { rng = Math.random } = {}) {
+  if (op !== 'div' && op !== 'mul') throw new RangeError('Unknown candy operation.');
+  const pool = [];
+  for (let basketCount = 2; basketCount <= 5; basketCount++) {
+    for (let target = 2; target <= 9; target++) pool.push({ op, basketCount, target });
+  }
+  return candyShuffle(pool, rng).slice(0, 10);
+}
+
+function inspectCandyBoard(packets, locations, basketCount, target) {
+  const counts = Array(basketCount).fill(0);
+  let trayRemaining = 0;
+  for (const { id, value } of packets) {
+    const location = locations[id];
+    if (Number.isInteger(location) && location >= 0 && location < basketCount) counts[location] += value;
+    else trayRemaining++;
+  }
+  return { counts, trayRemaining, allPlaced: trayRemaining === 0,
+    allMatch: trayRemaining === 0 && counts.every(count => count === target) };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { createCandyPackets, createCandyRound, inspectCandyBoard };
+}
+
+/* Candy practice UI. The main practice owns navigation and supplies its hint controller. */
+function setupCandyGame({ createQuestion, makeHints, onBack, rng = Math.random }) {
+  const app = document.getElementById('candyApp');
+  const $c = id => app.querySelector('#' + id);
+  const tray = 'tray', roundLength = 10, snapTime = 300, dragThreshold = 12;
+  const board = $c('candyBoard'), hintHost = $c('candyHints');
+  const hints = makeHints(hintHost);
+  let active = false, op = 'div', deck = [], index = 0, score = 0, puzzle = null, stage = 'placing';
+  let locations = [], history = [], feedback = '', extremes = new Set(), hinted = new Set();
+  let selectedOption = null, keyboardPacket = null, firstFinish = null, gesture = null, snap = null;
+  // Visual only: which packet just moved (pop) and the last basket totals (count bump).
+  let lastMoved = null, prevCounts = null;
+
+  function celebrate() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = ['#ff5c9d', '#ff922b', '#fcc419', '#40c057', '#15aabf', '#4c8dff', '#9c6cff'];
+    const layer = document.createElement('div');
+    layer.className = 'candy-confetti'; layer.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 28; i++) {
+      const bit = document.createElement('i');
+      bit.style.left = `${Math.round(Math.random() * 100)}%`;
+      bit.style.background = colors[i % colors.length];
+      bit.style.setProperty('--delay', `${Math.round(Math.random() * 300)}ms`);
+      bit.style.setProperty('--d', `${1400 + Math.round(Math.random() * 800)}ms`);
+      bit.style.setProperty('--dx', `${Math.round(Math.random() * 120 - 60)}px`);
+      bit.style.setProperty('--rot', `${Math.round(Math.random() * 720 - 360)}deg`);
+      layer.append(bit);
+    }
+    app.append(layer);
+    setTimeout(() => layer.remove(), 2600);
+  }
+
+  function boardState() {
+    return inspectCandyBoard(puzzle.packets, locations, puzzle.basketCount, puzzle.target);
+  }
+
+  function getHintState() {
+    return { counts: boardState().counts, target: puzzle.target, total: puzzle.total, locked: Boolean(gesture || snap),
+      basketCount: puzzle.basketCount, highlightHints(ids) {
+        hinted = new Set(ids.filter(id => Number.isInteger(id) && id >= 0 && id < puzzle.basketCount));
+        paintBasketMarks();
+      } };
+  }
+
+  function makeButton(className, text) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = className; button.textContent = text;
+    return button;
+  }
+
+  function packetNode(id) { return board.querySelector(`[data-packet-id="${id}"]`); }
+
+  function zoneLocation(zone) { return zone.dataset.candyZone === tray ? tray : Number(zone.dataset.candyZone); }
+
+  function zoneLabel(location) { return location === tray ? '糖包區' : `第 ${location + 1} 籃`; }
+
+  function renderZone(zone, location, count) {
+    zone.className = 'candy-zone ' + (location === tray ? 'candy-tray' : 'candy-basket');
+    zone.dataset.candyZone = location;
+    const label = makeButton('candy-zone-label', zoneLabel(location));
+    label.dataset.candyTarget = location;
+    if (location !== tray) {
+      zone.dataset.candyCount = count;
+      label.setAttribute('aria-label', `${zoneLabel(location)}，有 ${count} 粒${op === 'mul' ? `，目標 ${puzzle.target} 粒` : ''}`);
+      const value = document.createElement('span');
+      value.className = 'candy-count'; value.textContent = count + ' 粒'; label.append(value);
+      if (op === 'mul') {
+        const target = document.createElement('span');
+        target.className = 'candy-goal'; target.textContent = `目標 ${puzzle.target}`; label.append(target);
+      }
+    } else {
+      const countLabel = document.createElement('span');
+      countLabel.className = 'candy-goal'; countLabel.textContent = `${count} 包`; label.append(countLabel);
+      label.setAttribute('aria-label', `糖包區，有 ${count} 包`);
+    }
+    // Labels are keyboard destinations when a packet has been selected with Enter or Space.
+    label.tabIndex = keyboardPacket === null ? -1 : 0;
+    const content = document.createElement('div');
+    content.className = 'candy-packets';
+    for (const { id, value } of puzzle.packets) {
+      if (locations[id] !== location) continue;
+      const packet = makeButton('candy-packet', value);
+      packet.dataset.packetId = id; packet.dataset.value = value;
+      packet.setAttribute('aria-label', `${zoneLabel(location)}的糖包，${value} 粒`);
+      packet.setAttribute('aria-pressed', String(keyboardPacket === id));
+      if (id === lastMoved) packet.classList.add('is-new');
+      content.append(packet);
+    }
+    zone.replaceChildren(label, content);
+  }
+
+  function renderBoard() {
+    const { counts, trayRemaining } = boardState();
+    renderZone($c('candyTray'), tray, trayRemaining);
+    const baskets = counts.map((count, location) => {
+      const zone = document.createElement('div');
+      renderZone(zone, location, count);
+      if (prevCounts && prevCounts[location] !== count) zone.classList.add('is-bump');
+      return zone;
+    });
+    prevCounts = counts.slice(); lastMoved = null;
+    $c('candyBaskets').replaceChildren(...baskets);
+    paintBasketMarks();
+    renderBoardFeedback();
+  }
+
+  function renderBoardFeedback() {
+    const message = $c('candyFeedback');
+    $c('candyGuide').hidden = Boolean(feedback);
+    message.hidden = !feedback; message.textContent = feedback;
+  }
+
+  function paintBasketMarks() {
+    board.querySelectorAll('.candy-basket').forEach(zone => {
+      const id = zoneLocation(zone);
+      zone.classList.toggle('is-extreme', extremes.has(id));
+      zone.classList.toggle('is-hinted', hinted.has(id));
+    });
+  }
+
+  function renderControls() {
+    const busy = Boolean(gesture || snap), placing = stage === 'placing', choosing = stage === 'choosing';
+    $c('candyBack').disabled = busy;
+    $c('candyDiv').disabled = busy;
+    $c('candyMul').disabled = busy;
+    const undo = $c('candyUndo'), restart = $c('candyRestart'), finish = $c('candyFinish');
+    undo.hidden = restart.hidden = finish.hidden = !placing;
+    undo.disabled = busy || history.length === 0;
+    restart.disabled = busy || !locations.some(location => location !== tray);
+    finish.disabled = busy || !puzzle || !boardState().allPlaced;
+    $c('candyConfirm').hidden = !choosing;
+    $c('candyConfirm').disabled = !choosing || selectedOption === null;
+    $c('candyNext').hidden = stage !== 'done';
+    $c('candyNext').textContent = index === roundLength - 1 ? '查看總結' : '下一題';
+    hintHost.hidden = !placing && !choosing;
+    hintHost.inert = !active || busy || hintHost.hidden;
+  }
+
+  function renderTally() {
+    $c('candyProgress').textContent = `第 ${Math.min(index + 1, roundLength)}／${roundLength} 題`;
+    $c('candyScore').textContent = `★ ${score}`;
+  }
+
+  function clearBoardMarks() {
+    feedback = ''; extremes.clear(); hinted.clear();
+  }
+
+  function changedBoard() {
+    keyboardPacket = null;
+    clearBoardMarks(); renderBoard(); renderControls();
+  }
+
+  function prepareQuestion() {
+    cancelPointerAndSnap();
+    const { basketCount, target } = deck[index];
+    const q = createQuestion(op, basketCount, target, { rng });
+    const { packets } = createCandyPackets(basketCount, target, { rng });
+    puzzle = { q, basketCount, target, packets, total: basketCount * target };
+    locations = packets.map(() => tray); history = []; firstFinish = null; stage = 'placing';
+    prevCounts = null; lastMoved = null;
+    keyboardPacket = selectedOption = null; clearBoardMarks();
+    $c('candyPrompt').textContent = op === 'div'
+      ? `把 ${q.a} 粒糖平均分到 ${q.b} 個籃，每籃有多少粒？`
+      : `有 ${q.a} 個籃，每籃要有 ${q.b} 粒糖，一共有多少粒？`;
+    $c('candyWork').hidden = false; $c('candyReview').hidden = true;
+    $c('candyRecall').hidden = true; $c('candyAnswerFeedback').hidden = true;
+    $c('candyOptions').replaceChildren();
+    renderTally(); renderBoard(); renderControls();
+    hints.start(q, 'candy', getHintState);
+  }
+
+  function startRound(focusQuestion = false) {
+    cancelPointerAndSnap(); hints.resetRound();
+    index = score = 0; deck = createCandyRound(op, { rng });
+    $c('candyDiv').setAttribute('aria-pressed', String(op === 'div'));
+    $c('candyMul').setAttribute('aria-pressed', String(op === 'mul'));
+    $c('candyExercise').hidden = false; $c('candySummary').hidden = true;
+    prepareQuestion();
+    if (focusQuestion) $c('candyPrompt').focus({ preventScroll: true });
+  }
+
+  function placingAvailable() { return active && stage === 'placing' && !gesture && !snap; }
+
+  function movePacket(id, destination) {
+    if (locations[id] === destination) return false;
+    history.push({ id, from: locations[id] }); locations[id] = destination; lastMoved = id;
+    changedBoard();
+    return true;
+  }
+
+  function zoneAt(x, y) {
+    const underPointer = document.elementFromPoint(x, y);
+    const zone = underPointer && underPointer.closest('[data-candy-zone]');
+    return zone && board.contains(zone) ? zone : null;
+  }
+
+  function releaseCapture(drag) {
+    try {
+      if (drag.packet.hasPointerCapture(drag.id)) drag.packet.releasePointerCapture(drag.id);
+    } catch (_) { /* The pointer may already have been canceled by the browser. */ }
+  }
+
+  function removeHover(drag) {
+    if (drag.hover) drag.hover.classList.remove('is-over');
+    drag.hover = null;
+  }
+
+  function cancelPointerAndSnap() {
+    if (gesture) {
+      const drag = gesture; gesture = null;
+      removeHover(drag); releaseCapture(drag); drag.packet.classList.remove('is-drag-origin');
+      if (drag.ghost) drag.ghost.remove();
+    }
+    if (snap) {
+      clearTimeout(snap.timer); snap.ghost.remove(); snap.target.classList.remove('is-snap-target'); snap = null;
+    }
+    app.classList.remove('is-dragging', 'is-locked');
+  }
+
+  function snapTo(ghost, target) {
+    target.classList.add('is-snap-target');
+    app.classList.add('is-locked');
+    snap = { ghost, target, timer: 0 };
+    const targetRect = target.getBoundingClientRect();
+    const left = Number.parseFloat(ghost.style.left), top = Number.parseFloat(ghost.style.top);
+    const dx = targetRect.left + (targetRect.width - ghost.offsetWidth) / 2 - left;
+    const dy = targetRect.top + (targetRect.height - ghost.offsetHeight) / 2 - top;
+    // Resolve the current rendered position before adding the transition's destination.
+    void ghost.getBoundingClientRect();
+    ghost.classList.add('is-snapping');
+    ghost.style.transform = `translate3d(${dx}px,${dy}px,0)`;
+    snap.timer = setTimeout(() => {
+      ghost.remove(); target.classList.remove('is-snap-target');
+      snap = null; app.classList.remove('is-locked'); renderControls();
+    }, snapTime);
+    renderControls();
+  }
+
+  function positionDrag(drag, x, y) {
+    const dx = x - drag.x, dy = y - drag.y;
+    if (!drag.ghost) {
+      if (Math.hypot(dx, dy) <= dragThreshold) return;
+      const { left, top, width, height } = drag.packet.getBoundingClientRect();
+      const ghost = makeButton('candy-packet candy-drag-ghost', drag.packet.textContent);
+      ghost.setAttribute('aria-hidden', 'true'); ghost.tabIndex = -1; ghost.dataset.value = drag.packet.dataset.value;
+      Object.assign(ghost.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+      app.append(ghost); drag.ghost = ghost; drag.packet.classList.add('is-drag-origin');
+      app.classList.add('is-dragging');
+    }
+    drag.ghost.style.transform = `translate3d(${dx}px,${dy}px,0)`;
+    const zone = zoneAt(x, y);
+    const hover = zone && zoneLocation(zone) !== locations[drag.packetId] ? zone : null;
+    if (hover !== drag.hover) {
+      removeHover(drag); drag.hover = hover;
+      if (hover) hover.classList.add('is-over');
+    }
+  }
+
+  function finishDrag(event, canceled) {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const drag = gesture;
+    if (!canceled) positionDrag(drag, event.clientX, event.clientY);
+    gesture = null;
+    const destination = !canceled && drag.hover ? zoneLocation(drag.hover) : null;
+    removeHover(drag); releaseCapture(drag); drag.packet.classList.remove('is-drag-origin');
+    app.classList.remove('is-dragging');
+    if (!drag.ghost) { renderControls(); return; }
+    if (destination !== null) movePacket(drag.packetId, destination);
+    snapTo(drag.ghost, packetNode(drag.packetId));
+  }
+
+  board.addEventListener('pointerdown', event => {
+    const packet = event.target.closest('[data-packet-id]');
+    if (!packet || !placingAvailable() || !event.isPrimary || event.button !== 0) return;
+    if (keyboardPacket !== null) { keyboardPacket = null; paintKeyboardSelection(); }
+    gesture = { id: event.pointerId, packet, packetId: Number(packet.dataset.packetId),
+      x: event.clientX, y: event.clientY, ghost: null, hover: null };
+    try { packet.setPointerCapture(event.pointerId); } catch (_) { /* Global pointer listeners also cover no capture. */ }
+    renderControls();
+  });
+  window.addEventListener('pointermove', event => {
+    if (gesture && event.pointerId === gesture.id) positionDrag(gesture, event.clientX, event.clientY);
+  });
+  window.addEventListener('pointerup', event => finishDrag(event, false));
+  window.addEventListener('pointercancel', event => finishDrag(event, true));
+  board.addEventListener('lostpointercapture', event => finishDrag(event, true));
+  board.addEventListener('dragstart', event => event.preventDefault());
+  window.addEventListener('blur', () => {
+    if (gesture) { cancelPointerAndSnap(); renderControls(); }
+  });
+
+  function paintKeyboardSelection() {
+    board.querySelectorAll('[data-packet-id]').forEach(packet => {
+      packet.setAttribute('aria-pressed', String(Number(packet.dataset.packetId) === keyboardPacket));
+    });
+    board.querySelectorAll('[data-candy-target]').forEach(label => { label.tabIndex = keyboardPacket === null ? -1 : 0; });
+  }
+
+  board.addEventListener('click', event => {
+    if (!placingAvailable()) return;
+    const packet = event.target.closest('[data-packet-id]');
+    if (packet && event.detail === 0) {
+      const id = Number(packet.dataset.packetId);
+      keyboardPacket = keyboardPacket === id ? null : id;
+      paintKeyboardSelection();
+      if (keyboardPacket !== null) board.querySelector('[data-candy-target="0"]').focus({ preventScroll: true });
+      return;
+    }
+    const target = event.target.closest('[data-candy-target]');
+    if (target && keyboardPacket !== null) {
+      const id = keyboardPacket;
+      const destination = zoneLocation(target.closest('[data-candy-zone]'));
+      keyboardPacket = null;
+      if (!movePacket(id, destination)) paintKeyboardSelection();
+      packetNode(id).focus({ preventScroll: true });
+    }
+  });
+  board.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || keyboardPacket === null) return;
+    const id = keyboardPacket; keyboardPacket = null; paintKeyboardSelection();
+    packetNode(id).focus({ preventScroll: true }); event.preventDefault();
+  });
+  app.addEventListener('click', event => {
+    if (!gesture && !snap) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+  }, true);
+
+  $c('candyUndo').addEventListener('click', () => {
+    if (!placingAvailable() || !history.length) return;
+    const { id, from } = history.pop(); locations[id] = from; lastMoved = id; changedBoard();
+  });
+  $c('candyRestart').addEventListener('click', () => {
+    if (!placingAvailable()) return;
+    locations = puzzle.packets.map(() => tray); history = []; changedBoard();
+  });
+
+  function showUnequal(counts) {
+    const highest = Math.max(...counts), lowest = Math.min(...counts);
+    extremes = new Set(counts.flatMap((count, id) => count === highest || count === lowest ? [id] : []));
+    const common = `第 ${counts.indexOf(highest) + 1} 籃有 ${highest} 粒，第 ${counts.indexOf(lowest) + 1} 籃有 ${lowest} 粒。`;
+    feedback = common + (op === 'div' ? '每籃要一樣多，可以怎樣搬？' : `每籃的目標是 ${puzzle.target} 粒，可以怎樣搬？`);
+    paintBasketMarks();
+    renderBoardFeedback();
+  }
+
+  function showReview() {
+    const { q, target } = puzzle, division = op === 'div';
+    $c('candyWork').hidden = true; $c('candyReview').hidden = false;
+    $c('candyFirstSuccess').hidden = !firstFinish;
+    $c('candyReviewText').textContent = `每籃有 ${target} 粒。`;
+    $c('candyEquation').textContent = `${q.a} ${division ? '÷' : '×'} ${q.b} = ${q.c}`;
+    $c('candyVerification').hidden = !division;
+    $c('candyVerification').textContent = division ? `驗算：${q.b} × ${q.c} = ${q.a}` : '';
+    $c('candySkip').hidden = division;
+    $c('candySkip').textContent = division ? '' : '跳數：' + Array.from({ length: q.a }, (_, id) => (id + 1) * q.b).join('、');
+    $c('candyRecall').hidden = !division;
+    if (division) {
+      const options = q.opts.map(option => {
+        const button = makeButton('candy-button candy-choice', option.v);
+        button.dataset.optionId = option.id; button.dataset.value = option.v;
+        button.setAttribute('aria-pressed', 'false');
+        return button;
+      });
+      $c('candyOptions').replaceChildren(...options);
+      stage = 'choosing';
+    } else complete(true);
+    renderControls(); $c('candyEquation').focus({ preventScroll: true });
+  }
+
+  function complete(earnsStar) {
+    stage = 'done';
+    if (earnsStar) score++;
+    renderTally(); hints.end(); renderControls();
+  }
+
+  $c('candyFinish').addEventListener('click', () => {
+    if (!placingAvailable()) return;
+    const { counts, allPlaced, allMatch } = boardState();
+    if (!allPlaced) return;
+    if (firstFinish === null) {
+      firstFinish = allMatch;
+      // A failed first arrangement records this question immediately; a first-pass
+      // division arrangement waits for its one confirmed four-choice answer.
+      if (op === 'mul' || !allMatch) hints.answer(allMatch);
+    }
+    if (!allMatch) { showUnequal(counts); return; }
+    celebrate();
+    showReview();
+  });
+
+  $c('candyOptions').addEventListener('click', event => {
+    const choice = event.target.closest('[data-option-id]');
+    if (!active || stage !== 'choosing' || !choice) return;
+    selectedOption = choice.dataset.optionId;
+    $c('candyOptions').querySelectorAll('button').forEach(button => {
+      button.setAttribute('aria-pressed', String(button === choice));
+    });
+    renderControls();
+  });
+
+  $c('candyConfirm').addEventListener('click', () => {
+    if (!active || stage !== 'choosing' || selectedOption === null) return;
+    const answer = puzzle.q.opts.find(option => option.id === selectedOption);
+    if (!answer) return;
+    const correct = answer.v === puzzle.target;
+    $c('candyOptions').querySelectorAll('button').forEach(button => {
+      button.disabled = true;
+      button.classList.toggle('is-answer', Number(button.dataset.value) === puzzle.target);
+    });
+    const message = $c('candyAnswerFeedback');
+    message.hidden = false;
+    message.textContent = correct ? `每籃有 ${puzzle.target} 粒。`
+      : `選了 ${answer.v} 粒；平均分後，每籃有 ${puzzle.target} 粒。`;
+    if (firstFinish) hints.answer(correct);
+    complete(correct);
+    $c('candyNext').focus({ preventScroll: true });
+  });
+
+  $c('candyNext').addEventListener('click', () => {
+    if (!active || stage !== 'done') return;
+    index++;
+    if (index < roundLength) { prepareQuestion(); $c('candyPrompt').focus({ preventScroll: true }); return; }
+    stage = 'summary';
+    $c('candyExercise').hidden = true; $c('candySummary').hidden = false;
+    $c('candySummaryScore').textContent = `★ ${score}／${roundLength}`;
+    $c('candySummaryHints').textContent = `用了提示 ${hints.total} 次`;
+    celebrate();
+    $c('candyReplay').focus({ preventScroll: true });
+  });
+
+  $c('candyPrompt').tabIndex = -1;
+  $c('candyReplay').addEventListener('click', () => { if (active && stage === 'summary') startRound(true); });
+  $c('candyDiv').addEventListener('click', () => { if (active && op !== 'div') { op = 'div'; startRound(true); } });
+  $c('candyMul').addEventListener('click', () => { if (active && op !== 'mul') { op = 'mul'; startRound(true); } });
+  $c('candyBack').addEventListener('click', () => { if (active && !gesture && !snap) onBack(); });
+
+  return {
+    open() { if (!active) { active = true; startRound(); } },
+    close() { active = false; cancelPointerAndSnap(); renderControls(); hints.end(); }
+  };
+}
+
+  /* ---------- Keep the original round while Candy is open ---------- */
+  const practiceApp = $('#practiceApp'), candyApp = $('#candyApp');
+  const candyEntry = $('#modeCandy');
+  function practiceUnavailable() { return practiceApp.hidden || hintOverlay.open; }
+  function pausePractice() {
+    pointerTilt = null;
+    if (pointerId !== null && wrap.hasPointerCapture(pointerId)) wrap.releasePointerCapture(pointerId);
+    pointerId = null;
+    keys.clear();
+    P.vx = 0; P.vy = 0;
+    tilt.x = 0; tilt.y = 0;
+    clearDwell();
+    last = 0;
+  }
+  const practiceHints = makeHints($('#practiceHints'), { beforeOpen: pausePractice });
+  const candyGame = setupCandyGame({
+    createQuestion, makeHints,
+    onBack() {
+      candyGame.close();
+      candyApp.hidden = true;
+      practiceApp.hidden = false;
+      pausePractice();
+      draw();
+      candyEntry.focus({ preventScroll: true });
+    }
+  });
+  candyEntry.addEventListener('click', () => {
+    if (S.locked || S.submitted || practiceUnavailable()) return;
+    pausePractice();
+    practiceApp.hidden = true;
+    candyApp.hidden = false;
+    candyGame.open();
+    window.scrollTo(0, 0);
+    $('#candyBack').focus({ preventScroll: true });
+  });
+
+  /* ---------- controls and boot ---------- */
   function syncButtons() {
-    document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
-    document.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === S.level)));
+    candyEntry.disabled = S.locked || S.submitted;
+    document.querySelectorAll('[data-mode]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode));
+      b.disabled = S.locked || S.submitted;
+    });
+    document.querySelectorAll('[data-level]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === S.level));
+      b.disabled = S.locked || S.submitted;
+    });
+    document.querySelectorAll('[data-input-mode]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.inputMode === S.inputMode));
+      b.disabled = S.locked || S.submitted;
+    });
+    $('#sensorBtn').disabled = S.locked || S.submitted;
+    $('#calibBtn').disabled = S.locked || S.submitted;
     const sb = $('#soundBtn');
-    sb.setAttribute('aria-pressed', String(S.sound));
-    sb.textContent = S.sound ? '聲音：開' : '聲音：關';
+    sb.setAttribute('aria-pressed', String(S.sound)); sb.textContent = S.sound ? '聲音：開' : '聲音：關';
   }
   document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
-    if (S.mode === b.dataset.mode) return;
-    S.mode = b.dataset.mode; syncButtons(); closeAll(); newRound();
-    toast(`已轉為「${b.textContent}」，由第 1 題開始。`, 2200);
+    if (S.locked || S.submitted || S.mode === b.dataset.mode) return;
+    S.mode = b.dataset.mode; newRound();
+    toast('已轉為「' + b.textContent + '」，由第 1 題開始。', 2200);
   }));
   document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => {
-    if (S.level === b.dataset.level) return;
-    S.level = b.dataset.level; syncButtons(); closeAll(); newRound();
-    toast(`已轉為「${b.textContent}」，由第 1 題開始。`, 2200);
+    if (S.locked || S.submitted || S.level === b.dataset.level) return;
+    S.level = b.dataset.level; newRound();
+    toast('已轉為「' + b.textContent + '」，由第 1 題開始。', 2200);
   }));
+  document.querySelectorAll('[data-input-mode]').forEach((b) => b.addEventListener('click', () => setInputMode(b.dataset.inputMode)));
+  answerGrid.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-option-id]');
+    if (button && S.inputMode === 'buttons') selectOption(button.dataset.optionId);
+  });
+  $('#confirmBtn').addEventListener('click', submitAnswer);
+  $('#conceptChoices').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-concept-answer]');
+    if (b) answerConcept(b.dataset.conceptAnswer);
+  });
   $('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; syncButtons(); if (S.sound) beep([[660, 0.08]]); });
   $('#sensorBtn').addEventListener('click', enableSensor);
   $('#calibBtn').addEventListener('click', calibrate);
-  $('#replayBtn').addEventListener('click', () => playViz(S.q));
+  $('#replayBtn').addEventListener('click', () => { if (S.submitted) playViz(S.q); });
   $('#nextBtn').addEventListener('click', nextQ);
-  $('#againBtn').addEventListener('click', () => { closeOverlay(summary); newRound(); });
-
-  /* ---------- boot (keeps settings when the page is updated while open) ---------- */
+  $('#againBtn').addEventListener('click', newRound);
+  window.runOptionDistributionTest = (options) => {
+    const result = runOptionDistributionTest(options);
+    console.table(result.rows.map((r) => ({
+      operation: r.op, level: r.level, samples: r.samples,
+      rank1: r.rankPercent[0], rank2: r.rankPercent[1], rank3: r.rankPercent[2], rank4: r.rankPercent[3],
+      midpoint: r.strategies.midpoint.accuracyPercent,
+      densestNeighbour: r.strategies.densestNeighbour.accuracyPercent, pass: r.pass
+    })));
+    return result;
+  };
+  if (window.__TILT_TEST_MODE__ === true) {
+    window.__tiltTest = {
+      state: S, ball: P, holes: HOLE, physics, resetBall, selectOption, submitAnswer, setInputMode,
+      newRound, createQuestion, playViz, answerConcept,
+      pauseMotion: (value) => { qaPaused = !!value; clearDwell(); },
+      setQuestion: (op, a, b) => {
+        closeAll(); clearConcept(); S.selectedOptionId = null; S.submitted = false; S.locked = false;
+        S.q = op === 'div' ? createQuestion('div', b, a / b) : createQuestion('mul', a, b);
+        practiceHints.start(S.q, 'practice');
+        resetBall(); renderQuestion(); syncButtons(); draw(); return S.q;
+      }
+    };
+  }
   let started = false;
   function start(data) {
-    if (started) return;
-    started = true;
+    if (started) return; started = true;
     if (data && typeof data === 'object') {
       if (['div', 'mul', 'mix'].includes(data.mode)) S.mode = data.mode;
       if (['easy', 'hard'].includes(data.level)) S.level = data.level;
+      if (['tilt', 'buttons'].includes(data.inputMode)) S.inputMode = data.inputMode;
       if (typeof data.sound === 'boolean') S.sound = data.sound;
     }
     ballEl.style.left = '0'; ballEl.style.top = '0';
-    syncButtons();
-    newRound();
-    requestAnimationFrame(loop);
+    newRound(); requestAnimationFrame(loop);
   }
   const hot = window.claude && window.claude.hot;
-  try { if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ mode: S.mode, level: S.level, sound: S.sound })); } catch (err) { /* optional */ }
+  try {
+    if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({
+      mode: S.mode, level: S.level, inputMode: S.inputMode, sound: S.sound
+    }));
+  } catch (err) { /* optional host state */ }
   try {
     if (hot && typeof hot.ready === 'function') hot.ready(start);
     else start((hot && hot.data) || {});
   } catch (err) { start({}); }
   setTimeout(() => start({}), 1200);
+
 })();
 </script>
 
